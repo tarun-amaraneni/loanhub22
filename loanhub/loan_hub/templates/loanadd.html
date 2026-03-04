@@ -39,7 +39,7 @@
 table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 950px;
+    min-width: 1000px;
 }
 thead {
     background-color: #354A5E;
@@ -55,10 +55,6 @@ input, select {
     padding: 7px 10px;
     border-radius: 6px;
     border: 1px solid #d1d5db;
-}
-.invalid-row input, .invalid-row select {
-    border-color: #ef4444;
-    background-color: #fee2e2;
 }
 .btn-delete {
     background: #dc2626;
@@ -78,57 +74,29 @@ input, select {
     cursor: pointer;
     float: right;
 }
-hr {
-    margin: 35px 0;
+.placeholder-text {
+    color: #9ca3af;
+    font-style: italic;
 }
 </style>
 
 <form method="POST">
 {% csrf_token %}
 
-<!-- ================= ISSUE LOANS / DEPOSITS ================= -->
 <div class="card-box">
     <div class="header-bar">
-        <h2>💰 Issue Loans / Deposits</h2>
-        <button type="button" onclick="addIssueRow()" class="btn-add">➕ Add New</button>
+        <h2>Add Record</h2>
+        <button type="button" class="btn-add" onclick="addPaymentRow()">➕ Add New</button>
     </div>
 
     <div class="table-wrapper">
-        <table id="loanTable">
+        <table id="paymentTable">
             <thead>
                 <tr>
+                    <th>Mode</th>
                     <th>Gen No</th>
                     <th>Name</th>
-                    <th>Type</th>
-                    <th>Amount</th>
-                    <th>Cash</th>
-                    <th>Bank1</th>
-                    <th>Bank2</th>
-                    <th>Adj</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-</div>
-
-<hr>
-
-<!-- ================= LOAN REPAYMENTS ================= -->
-<div class="card-box">
-    <div class="header-bar">
-        <h2>Repayments</h2>
-        <button type="button" onclick="addRepaymentRow()" class="btn-add">➕ Add New</button>
-    </div>
-
-    <div class="table-wrapper">
-        <table id="repaymentTable">
-            <thead>
-                <tr>
-                    <th>Gen No</th>
-                    <th>Name</th>
+                    <th>Loan ID</th>
                     <th>Loan Type</th>
                     <th>Amount</th>
                     <th>Cash</th>
@@ -142,10 +110,9 @@ hr {
             <tbody></tbody>
         </table>
     </div>
-
-    <button type="submit" class="btn-submit">💾 Submit</button>
 </div>
 
+<button type="submit" class="btn-submit">💾 Submit</button>
 </form>
 
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -156,159 +123,201 @@ function today() {
     return new Date().toISOString().split('T')[0];
 }
 
+/* ================= VALIDATION ================= */
+function areAllRowsComplete() {
+    let valid = true;
+
+    $('#paymentTable tbody tr').each(function () {
+        const $row = $(this);
+
+        const mode = $row.find('.modeSelect').val();
+        const gen = $row.find('.genInput').val().trim();
+        const name = $row.find('.nameInput').val().trim();
+        const loanType = $row.find('.loanType').val();
+        const date = $row.find('input[type="date"]').val();
+
+        let loanIdOk = true;
+
+        if (mode === 'existing') {
+            loanIdOk = !!$row.find('.loanSelect').val();
+        }
+
+        if (!mode || !gen || !name || !loanType || !date || !loanIdOk) {
+            valid = false;
+            return false;
+        }
+    });
+
+    return valid;
+}
+
 /* ================= AUTOCOMPLETE ================= */
 function setupAutocomplete($row) {
     const $gen = $row.find('.genInput');
     const $name = $row.find('.nameInput');
 
     $gen.autocomplete({
-        source: function(request, response) {
-            $.ajax({
-                url: "/api/users-autocomplete/",
-                data: { term: request.term },
-                dataType: "json",
-                success: function(data) {
-                    response($.map(data, function(item) {
-                        return {
-                            label: item.code + " - " + item.name,
-                            value: item.code,
-                            name: item.name
-                        };
-                    }));
-                }
+        source: function (req, res) {
+            $.getJSON("/api/users-autocomplete/", { term: req.term }, function (data) {
+                res($.map(data, function (item) {
+                    return {
+                        label: item.code + " - " + item.name,
+                        value: item.code,
+                        name: item.name
+                    };
+                }));
             });
         },
         minLength: 0,
-        select: function(event, ui) {
+        select: function (e, ui) {
             $gen.val(ui.item.value);
             $name.val(ui.item.name);
+            loadActiveLoans($row);
             return false;
         }
-    });
-
-    $gen.on('focus', function () {
+    }).focus(function () {
         $(this).autocomplete("search", $(this).val());
     });
 
     $name.autocomplete({
         source: "/api/users-autocomplete/",
         minLength: 1,
-        select: function(event, ui) {
+        select: function (e, ui) {
             $name.val(ui.item.name);
             $gen.val(ui.item.code);
+            loadActiveLoans($row);
             return false;
         }
     });
 }
 
-/* ================= CALC + VALIDATION ================= */
+/* ================= AMOUNT ================= */
 function recalcAmount($row) {
-    const cash  = parseFloat($row.find('.cash').val()) || 0;
-    const bank1 = parseFloat($row.find('.bank1').val()) || 0;
-    const bank2 = parseFloat($row.find('.bank2').val()) || 0;
-    const adj   = parseFloat($row.find('.adj').val()) || 0;
-    $row.find('.amount').val(cash + bank1 + bank2 + adj);
+    const total =
+        (+$row.find('.cash').val() || 0) +
+        (+$row.find('.bank1').val() || 0) +
+        (+$row.find('.bank2').val() || 0) +
+        (+$row.find('.adj').val() || 0);
+    $row.find('.amount').val(total);
 }
 
-function validateRow($row) {
-    let valid = true;
-    $row.removeClass('invalid-row');
+/* ================= LOAD ACTIVE LOANS ================= */
+function loadActiveLoans($row) {
+    const genNo = $row.find('.genInput').val().trim();
+    const $loanSelect = $row.find('.loanSelect');
+    const $loanType = $row.find('.loanType');
 
-    const gen  = $row.find('.genInput').val().trim();
-    const name = $row.find('.nameInput').val().trim();
-    const type = $row.find('select').val();
-    const date = $row.find('input[type="date"]').val();
+    if (!genNo || !$loanSelect.length) return;
 
-    if (!gen || !name || !type || !date) valid = false;
+    $.getJSON("/api/active-loans/", { gen_no: genNo, table: 'payments' }, function (data) {
+        $loanSelect.html('<option value="">-- Select Loan --</option>');
+        data.forEach(function (loan) {
+            $loanSelect.append(
+                `<option value="${loan.code}" data-type="${loan.type}">
+                    ${loan.code} (${loan.type})
+                </option>`
+            );
+        });
 
-    const amount = parseFloat($row.find('.amount').val()) || 0;
-    const cash  = parseFloat($row.find('.cash').val()) || 0;
-    const bank1 = parseFloat($row.find('.bank1').val()) || 0;
-    const bank2 = parseFloat($row.find('.bank2').val()) || 0;
-    const adj   = parseFloat($row.find('.adj').val()) || 0;
+        $loanSelect.off('change').on('change', function () {
+            $loanType.val($(this).find(':selected').data('type') || '');
+        });
+    });
 
-    if (amount !== (cash + bank1 + bank2 + adj)) valid = false;
 
-    if (!valid) $row.addClass('invalid-row');
-    return valid;
+    $.getJSON("/api/active-loans/", { gen_no: genNo, table: 'payments' }, function (data) {
+    $loanSelect.html('<option value="">-- Select Loan --</option>');
+    data.forEach(function (loan) {
+        $loanSelect.append(
+            `<option value="${loan.code}" data-type="${loan.type}">
+                ${loan.code} (${loan.type})
+            </option>`
+        );
+    });
+
+    // When loan is selected
+    $loanSelect.off('change').on('change', function () {
+        const selectedType = $(this).find(':selected').data('type') || '';
+        $loanType.val(selectedType);
+
+        if (selectedType) {
+            // 🔒 disable loan type dropdown for existing loan
+            $loanType.prop('disabled', true);
+        } else {
+            $loanType.prop('disabled', false);
+        }
+    });
+
+    // If a loan is already pre-selected (like editing row)
+    const preSelected = $loanSelect.val();
+    if (preSelected) {
+        $loanType.prop('disabled', true);
+    }
+});
 }
 
-/* ================= ISSUE ROW ================= */
-function addIssueRow() {
-    const last = $('#loanTable tbody tr:last');
-    if (last.length && !validateRow(last)) {
-        alert("⚠ Please complete the previous Issue row correctly.");
+/* ================= ADD ROW ================= */
+function addPaymentRow() {
+
+    if (!areAllRowsComplete()) {
+        alert("Please fill all fields in existing rows before adding a new one.");
         return;
     }
 
     const row = $(`
-        <tr>
-            <td><input name="gen_no[]" class="genInput"></td>
-            <td><input name="name[]" class="nameInput"></td>
-            <td>
-                <select name="type[]">
-                    <option value="">-- Select --</option>
-                    <option>MTL LOAN</option>
-                    <option>FDL LOAN</option>
-                    <option>KVP/NSC LOAN</option>
-                    <option>FIXED DEPOSITS</option>
-                    <option>THRIFT FUNDS</option>
-                    <option>WELFARE COLLECTIONS</option>
-                </select>
-            </td>
-            <td><input name="amount[]" class="amount" value="0" readonly></td>
-            <td><input name="cash[]" class="cash" value="0"></td>
-            <td><input name="bank1[]" class="bank1" value="0"></td>
-            <td><input name="bank2[]" class="bank2" value="0"></td>
-            <td><input name="adj[]" class="adj" value="0"></td>
-            <td><input name="date[]" type="date" value="${today()}"></td>
-            <td><button type="button" class="btn-delete" onclick="$(this).closest('tr').remove()">🗑</button></td>
-        </tr>
-    `);
+<tr>
+    <td>
+        <select name="mode[]" class="modeSelect" required>
+            <option value="">-- Select Mode --</option>
+            <option value="issue">Issue New</option>
+            <option value="existing">Manage Existing</option>
+        </select>
+    </td>
+    <td><input name="gen_no[]" class="genInput"></td>
+    <td><input name="name[]" class="nameInput"></td>
+    <td class="loanIdCell"><span class="placeholder-text">Select Mode</span></td>
+    <td>
+        <select name="loan_type[]" class="loanType">
+            <option value="">-- Select --</option>
+            <option>MTL LOAN</option>
+            <option>FDL LOAN</option>
+            <option>KVP/NSC LOAN</option>
+            <option>THRIFT FUNDS</option>
+            <option>FIXED DEPOSITS</option>
+            <option>WELFARE COLLECTIONS</option>
+        </select>
+    </td>
+    <td><input name="amount[]" class="amount" value="0" readonly></td>
+    <td><input name="cash[]" class="cash" value="0"></td>
+    <td><input name="bank1[]" class="bank1" value="0"></td>
+    <td><input name="bank2[]" class="bank2" value="0"></td>
+    <td><input name="adj[]" class="adj" value="0"></td>
+    <td><input name="date[]" type="date" value="${today()}"></td>
+    <td><button type="button" class="btn-delete" onclick="$(this).closest('tr').remove()">🗑</button></td>
+</tr>
+`);
 
     row.find('.cash,.bank1,.bank2,.adj').on('input', () => recalcAmount(row));
-    $('#loanTable tbody').append(row);
+    $('#paymentTable tbody').append(row);
     setupAutocomplete(row);
+
+    row.find('.modeSelect').on('change', function () {
+        const $cell = row.find('.loanIdCell');
+
+        if (this.value === 'issue') {
+            $cell.html(`<input name="loan_id[]" placeholder="Auto Generated (Optional)">`);
+        } else if (this.value === 'existing') {
+            $cell.html(`<select name="loan_id[]" class="loanSelect" required></select>`);
+            loadActiveLoans(row);
+        } else {
+            $cell.html(`<span class="placeholder-text">Select Mode</span>`);
+        }
+    });
 }
 
-/* ================= REPAYMENT ROW ================= */
-function addRepaymentRow() {
-    const last = $('#repaymentTable tbody tr:last');
-    if (last.length && !validateRow(last)) {
-        alert("⚠ Please complete the previous Repayment row correctly.");
-        return;
-    }
-
-    const row = $(`
-        <tr>
-            <td><input name="rep_gen_no[]" class="genInput"></td>
-            <td><input name="rep_name[]" class="nameInput"></td>
-            <td>
-                <select name="rep_type[]">
-                    <option value="">-- Select --</option>
-                    <option>MTL LOAN</option>
-                    <option>FDL LOAN</option>
-                    <option>KVP/NSC LOAN</option>
-                </select>
-            </td>
-            <td><input name="rep_amount[]" class="amount" value="0" readonly></td>
-            <td><input name="rep_cash[]" class="cash" value="0"></td>
-            <td><input name="rep_bank1[]" class="bank1" value="0"></td>
-            <td><input name="rep_bank2[]" class="bank2" value="0"></td>
-            <td><input name="rep_adj[]" class="adj" value="0"></td>
-            <td><input name="rep_date[]" type="date" value="${today()}"></td>
-            <td><button type="button" class="btn-delete" onclick="$(this).closest('tr').remove()">🗑</button></td>
-        </tr>
-    `);
-
-    row.find('.cash,.bank1,.bank2,.adj').on('input', () => recalcAmount(row));
-    $('#repaymentTable tbody').append(row);
-    setupAutocomplete(row);
-}
-
+/* ================= INIT ================= */
 $(document).ready(function () {
-    addIssueRow();
-    addRepaymentRow();
+    addPaymentRow();   // ⬅ adds one empty row by default
 });
 </script>
 

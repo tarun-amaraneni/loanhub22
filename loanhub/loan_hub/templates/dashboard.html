@@ -72,6 +72,20 @@
     background-color:#008001;
 }
 
+.download-btn {
+    background-color: #2563eb;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+.download-btn:hover {
+    background-color: #1e40af;
+}
+
 </style>
 
 
@@ -97,9 +111,56 @@
 <button type="submit"
         class="submit-button"
         disabled>Submit</button>
+<!-- 
+<a href="{% url 'download_user_pdf' gen_no %}" class="btn btn-success">
+    Download Full Report
+</a> -->
+
+<!-- <button type="button"
+        onclick="window.location.href='{% url 'download_user_pdf' gen_no %}'"
+        style="
+            background-color:#286ca7;
+            color:white;
+            padding:10px 18px;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+            font-size:14px;">
+    Download Full Report
+</button> -->
+
+<!-- </div> -->
+
+{% if gen_no %}
+<div style="display:flex; gap:10px; flex-wrap:wrap;">
+
+    <!-- Active Loans -->
+    <button type="button"
+        onclick="window.location.href='{% url 'download_user_pdf' gen_no 'active' %}'"
+        style="background:#28a745;color:white;padding:10px 18px;border:none;border-radius:5px;cursor:pointer;">
+        Download Active Loans
+    </button>
+
+    <!-- Closed Loans -->
+    <button type="button"
+        onclick="window.location.href='{% url 'download_user_pdf' gen_no 'closed' %}'"
+        style="background:#dc3545;color:white;padding:10px 18px;border:none;border-radius:5px;cursor:pointer;">
+        Download Closed Loans
+    </button>
+
+    <!-- Full Report -->
+    <button type="button"
+        onclick="window.location.href='{% url 'download_user_pdf' gen_no 'full' %}'"
+        style="background:#286ca7;color:white;padding:10px 18px;border:none;border-radius:5px;cursor:pointer;">
+        Download Full Report
+    </button>
 
 </div>
+{% endif %}
 
+
+</div>
+<br>
 <input type="text" class="input-box1" value="{{ gen_no }}" readonly>
 <input type="text" class="input-box1" value="{{ user_name }}" readonly>
 
@@ -143,8 +204,15 @@
     <button class="status-btn closed">Closed</button>
   {% endif %}
 </td>
+<!-- <td>
+<a href="{% url 'loans' %}?gen_no={{ item.gen_no }}" class="go-btn">Go To →</a>
+</td> -->
 <td>
 <a href="{% url 'loans' %}?gen_no={{ item.gen_no }}" class="go-btn">Go To →</a>
+
+<a href="{% url 'download_loan_pdf' item.id %}" class="download-btn">
+    Download PDF
+</a>
 </td>
 </tr>
 {% empty %}
@@ -198,6 +266,13 @@
 </td>
 <td>
 <a href="{% url 'deposits' %}?gen_no={{ item.gen_no }}" class="go-btn">Go To →</a>
+
+<!-- <a href="{% url 'loans' %}?gen_no={{ item.gen_no }}" class="go-btn">Go To →</a> -->
+
+<a href="{% url 'download_loan_pdf' item.id %}" class="download-btn">
+    Download PDF
+</a>
+</td>
 </td>
 </tr>
 {% empty %}
@@ -263,6 +338,14 @@
 <td>{{ item.created_at|date:"Y-m-d" }}</td>
 <td>
 <a href="{% url 'others' %}?gen_no={{ item.gen_no }}" class="go-btn">Go To →</a>
+<!-- </td>
+
+<td> -->
+<!-- <a href="{% url 'loans' %}?gen_no={{ item.gen_no }}" class="go-btn">Go To →</a> -->
+
+<!-- <a href="{% url 'download_loan_pdf' item.id %}" class="download-btn">
+    Download PDF
+</a> -->
 </td>
 </tr>
 {% empty %}

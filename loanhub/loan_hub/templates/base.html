@@ -82,7 +82,33 @@
         .toggle-btn.toggled div {
     background-color: #ff0000; /* Turns white after sidebar hides */
 }
+html, body {
+    height: auto;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+}
 
+/* MAIN CONTENT FIX */
+.main-content {
+    margin-left: 220px;
+    padding: 20px;
+    min-height: auto;   /* remove 100vh lock */
+    height: auto;       /* allow it to grow */
+    box-sizing: border-box;
+}
+
+/* Sidebar remains fixed */
+.sidebar {
+    width: 220px;
+    background-color: #2c3e50;
+    color: white;
+    height: 100vh;
+    position: fixed;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
 
 html, body {
     height: 100%;

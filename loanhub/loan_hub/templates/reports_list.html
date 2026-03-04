@@ -2,15 +2,40 @@
 {% block content %}
 
 <style>
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; font-family: "Segoe UI", Arial, sans-serif; }
+* {
+    box-sizing: border-box;
+}
 
-.main-wrapper { display: flex; flex-direction: column; height: 100vh; padding: 12px; background: #f3f6fa; }
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #f3f6fa;
+}
 
-.top-controls { margin-bottom: 12px; }
-.top-buttons, .search-bar, .date-download {
-    display: flex; gap: 10px; flex-wrap: wrap;
-    justify-content: center; margin-bottom: 8px;
+/* ================= MAIN WRAPPER ================= */
+
+.main-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;   /* allow full page scroll */
+    padding: 12px;
+}
+
+/* ================= TOP CONTROLS ================= */
+
+.top-controls {
+    margin-bottom: 12px;
+}
+
+.top-buttons,
+.search-bar,
+.date-download {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 8px;
 }
 
 .date-download {
@@ -21,23 +46,31 @@ html, body { margin: 0; padding: 0; font-family: "Segoe UI", Arial, sans-serif; 
     border-radius: 10px;
 }
 
-input[type=date], input[type=text] {
+input[type=date],
+input[type=text] {
     padding: 7px;
     border-radius: 5px;
     border: 1px solid #bfc7d3;
 }
 
+/* ================= TABLE WRAPPER ================= */
+
 .table-scroll {
-    flex: 1;
-    overflow-y: auto;
+    width: 100%;
+    overflow-x: auto;   /* horizontal scroll */
+    overflow-y: visible; /* page handles vertical scroll */
+    -webkit-overflow-scrolling: touch;
+
     border-radius: 10px;
     border: 1px solid #cfd4dc;
     background: white;
 }
 
+/* ================= TABLE ================= */
+
 .report-table {
-    width: max-content;
-    min-width: 1200px;
+    width: 100%;
+    min-width: 1200px;   /* prevents column squeeze */
     border-collapse: collapse;
 }
 
@@ -45,8 +78,9 @@ input[type=date], input[type=text] {
     background: #34495e;
     color: yellow;
     padding: 10px;
-    position: sticky;
+    position: sticky;   /* sticky header still works */
     top: 0;
+    z-index: 5;
 }
 
 .report-table tbody td {
@@ -55,7 +89,11 @@ input[type=date], input[type=text] {
     text-align: center;
 }
 
-.report-table tr:hover { background:#f8fbff; }
+.report-table tr:hover {
+    background: #f8fbff;
+}
+
+/* ================= BUTTONS ================= */
 
 .view-btn {
     padding: 7px 14px;
@@ -68,7 +106,7 @@ input[type=date], input[type=text] {
 
 .view-btn.active {
     background: #34495e;
-    color:white !important;
+    color: white !important;
 }
 
 .view-btn-row {
@@ -78,7 +116,10 @@ input[type=date], input[type=text] {
     background: #e0f7f5;
     cursor: pointer;
 }
-.view-btn-row:hover { background: #b2ebe6; }
+
+.view-btn-row:hover {
+    background: #b2ebe6;
+}
 
 .row-download-btn {
     padding: 4px 8px;
@@ -87,7 +128,10 @@ input[type=date], input[type=text] {
     background: #f0f0f0;
     cursor: pointer;
 }
-.row-download-btn:hover { background:#d9d9d9; }
+
+.row-download-btn:hover {
+    background: #d9d9d9;
+}
 
 #downloadBtn {
     background: #34495e;
@@ -98,15 +142,18 @@ input[type=date], input[type=text] {
     font-weight: 600;
     cursor: pointer;
 }
-#downloadBtn:hover { background: #2c3e50; }
+
+#downloadBtn:hover {
+    background: #2c3e50;
+}
 
 #clearFiltersBtn {
     background: #e63946;
-    color:#fff;
+    color: #fff;
     padding: 7px 14px;
-    border-radius:8px;
-    border:none;
-    cursor:pointer;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
 }
 
 /* ================= MODAL ================= */
@@ -114,7 +161,7 @@ input[type=date], input[type=text] {
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.55);
+    background: rgba(0, 0, 0, 0.55);
     display: none;
     justify-content: center;
     align-items: center;
@@ -174,10 +221,67 @@ input[type=date], input[type=text] {
 }
 
 @keyframes fadeIn {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
+/* ================= INLINE DROPDOWN ================= */
+
+.inline-details {
+    display: none;
+    background: #f8fbff;
+}
+
+.inline-content {
+    padding: 15px;
+    border: 1px solid #cfd4dc;
+    border-radius: 10px;
+    margin: 10px;
+    background: white;
+}
+
+.inline-section-title {
+    font-weight: bold;
+    margin: 15px 0 8px;
+}
+
+/* Inline table scroll */
+.inline-table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 12px;
+}
+
+.inline-table-scroll table {
+    min-width: 900px;
+}
+
+/* ================= INLINE TABLE ROW COLORS ================= */
+
+/* Payments table */
+.inline-content > div:nth-of-type(2) tbody tr {
+    background: #fdeaea;
+}
+
+.inline-content > div:nth-of-type(2) tbody tr:hover {
+    background: #f8cfcf;
+}
+
+/* Receipts table */
+.inline-content > div:nth-of-type(4) tbody tr {
+    background: #e8f6ec;
+}
+
+.inline-content > div:nth-of-type(4) tbody tr:hover {
+    background: #cdebd6;
+}
 </style>
 
 <div class="main-wrapper">
@@ -227,40 +331,46 @@ input[type=date], input[type=text] {
             </thead>
 
             <tbody>
-                {% for row in rows %}
-                <tr>
-                    <td>{{ row.gen_no }}</td>
-                    <td>{{ row.name }}</td>
-                    <td>{{ row.ref }}</td>
+{% for row in rows %}
+<tr class="main-row">
+    <td>{{ row.gen_no }}</td>
+    <td>{{ row.name }}</td>
+    <td>{{ row.ref }}</td>
 
-                    {% if view_mode == 'all' %}
-                        <td>{{ row.balance }}</td>
-                        {% if is_loan_or_deposit %}
-                            <td>{{ row.interest }}</td>
-                            <td>{{ row.created_at }}</td>
-                        {% endif %}
-                    {% else %}
-                        <td>{{ row.cash }}</td>
-                        <td>{{ row.bank1 }}</td>
-                        <td>{{ row.bank2 }}</td>
-                        <td>{{ row.adjustment }}</td>
-                        <td>{{ row.created_at }}</td>
-                    {% endif %}
+    {% if view_mode == 'all' %}
+        <td>{{ row.balance }}</td>
+        {% if is_loan_or_deposit %}
+            <td>{{ row.interest }}</td>
+            <td>{{ row.created_at|slice:":10" }}</td>
+        {% endif %}
+    {% else %}
+        <td>{{ row.cash }}</td>
+        <td>{{ row.bank1 }}</td>
+        <td>{{ row.bank2 }}</td>
+        <td>{{ row.adjustment }}</td>
+        <td>{{ row.created_at|slice:":10" }}</td>
+    {% endif %}
 
-                    <td>
-                        <div style="display:flex; gap:6px; justify-content:center;">
-                            <button class="view-btn-row"
-        data-loan-id="{{ row.loan_id }}">
-    👁
-</button>
-                            <button class="row-download-btn"
-        data-loan-id="{{ row.loan_id }}">
-    ⬇
-</button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
+<td style="display:flex; gap:6px; justify-content:center;">
+    <button class="view-btn-row" data-loan-id="{{ row.loan_id }}" title="View">
+        👁
+    </button>
+
+    <button class="row-download-btn" data-loan-id="{{ row.loan_id }}" title="Download">
+        ⬇
+    </button>
+</td>
+</tr>
+
+<!-- 🔽 INLINE DROPDOWN ROW -->
+<tr class="inline-details" id="details-{{ row.loan_id }}">
+    <td colspan="100%">
+        <div class="inline-content">
+            <p style="text-align:center;">Loading...</p>
+        </div>
+    </td>
+</tr>
+{% endfor %}
             </tbody>
         </table>
     </div>
@@ -329,100 +439,134 @@ input[type=date], input[type=text] {
     </div>
 </div>
 <script>
+
+function formatDate(dateStr) {
+    if (!dateStr) return "";
+    return dateStr.split("T")[0].split(" ")[0];
+}
+
+
 document.querySelectorAll(".view-btn-row").forEach(btn => {
 
     btn.addEventListener("click", function () {
 
         const loanId = this.dataset.loanId;
+        const detailRow = document.getElementById(`details-${loanId}`);
+        const contentDiv = detailRow.querySelector(".inline-content");
 
-        if (!loanId || loanId === "None" || loanId === "") {
+        if (!loanId || loanId === "None") {
             alert("Invalid Loan ID");
             return;
         }
 
-        const paymentsBody = document.getElementById("modalPayments");
-        const receiptsBody = document.getElementById("modalReceipts");
+        // Toggle
+        if (detailRow.style.display === "table-row") {
+            detailRow.style.display = "none";
+            return;
+        }
 
-        // Show loading state
-        paymentsBody.innerHTML = `<tr><td colspan="11">Loading...</td></tr>`;
-        receiptsBody.innerHTML = `<tr><td colspan="13">Loading...</td></tr>`;
+        // Close other open rows
+        document.querySelectorAll(".inline-details").forEach(r => r.style.display = "none");
+
+        detailRow.style.display = "table-row";
+        contentDiv.innerHTML = `<p style="text-align:center;">Loading...</p>`;
 
         fetch(`/loan-transactions/${loanId}/`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Server error");
-                }
-                return response.json();
-            })
+            .then(res => res.json())
             .then(data => {
 
-                paymentsBody.innerHTML = "";
-                receiptsBody.innerHTML = "";
+                let html = "";
 
-                // ================= PAYMENTS =================
+                /* ================= PAYMENTS ================= */
+                html += `<div class="inline-section-title">Payments</div>`;
+html += `
+                <div class="inline-table-scroll">
+                <table class="modal-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Total</th>
+                            <th>Cash</th>
+                            <th>Bank1</th>
+                            <th>Bank2</th>
+                            <th>Adjustment</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
                 if (!data.payments || data.payments.length === 0) {
-                    paymentsBody.innerHTML =
-                        `<tr><td colspan="11">No Payments Found</td></tr>`;
+                    html += `<tr><td colspan="9">No Payments Found</td></tr>`;
                 } else {
                     data.payments.forEach(p => {
-                        paymentsBody.innerHTML += `
-                            <tr>
-                                <td>${p.code || ""}</td>
-                                <td>${p.principal || 0}</td>
-                                <td>${p.interest || 0}</td>
-                                <td>${p.total || 0}</td>
-                         
-                                <td>${p.cash || 0}</td>
-                                <td>${p.bank1 || 0}</td>
-                                <td>${p.bank2 || 0}</td>
-                                <td>${p.adjustment || 0}</td>
-                                
-                                <td>${p.created_at || ""}</td>
-                            </tr>
-                        `;
+                        html += `
+                        <tr>
+                            <td>${p.code || ""}</td>
+                            <td>${p.principal || 0}</td>
+                            <td>${p.interest || 0}</td>
+                            <td>${p.total || 0}</td>
+                            <td>${p.cash || 0}</td>
+                            <td>${p.bank1 || 0}</td>
+                            <td>${p.bank2 || 0}</td>
+                            <td>${p.adjustment || 0}</td>
+                            <td>${formatDate(p.created_at)}</td>
+                        </tr>`;
                     });
                 }
 
-                // ================= RECEIPTS =================
+                html += `</tbody></table></div>`;
+
+                /* ================= RECEIPTS ================= */
+                html += `<div class="inline-section-title">Receipts</div>`;
+html += `
+                <div class="inline-table-scroll">
+                <table class="modal-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Type of Loan</th>
+                            <th>Total Payment</th>
+                            <th>Paid to Interest</th>
+                            <th>Paid to Principal</th>
+                            <th>Cash</th>
+                            <th>Bank1</th>
+                            <th>Bank2</th>
+                            <th>Adjustment</th>
+                            <th>Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
                 if (!data.receipts || data.receipts.length === 0) {
-                    receiptsBody.innerHTML =
-                        `<tr><td colspan="13">No Receipts Found</td></tr>`;
+                    html += `<tr><td colspan="10">No Receipts Found</td></tr>`;
                 } else {
                     data.receipts.forEach(r => {
-                        receiptsBody.innerHTML += `
-                            <tr>
-                                <td>${r.code || ""}</td>
-                                
-                                <td>${r.type_of_loan || ""}</td>
-                                <td>${r.total_payment || 0}</td>
-                                <td>${r.paid_to_interest || 0}</td>
-                                <td>${r.paid_to_principal || 0}</td>
-                             
-                                <td>${r.cash || 0}</td>
-                                <td>${r.bank1 || 0}</td>
-                                <td>${r.bank2 || 0}</td>
-                                <td>${r.adjustment || 0}</td>
-                               
-                                <td>${r.created_at || ""}</td>
-                            </tr>
-                        `;
+                        html += `
+                        <tr>
+                            <td>${r.code || ""}</td>
+                            <td>${r.type_of_loan || ""}</td>
+                            <td>${r.total_payment || 0}</td>
+                            <td>${r.paid_to_interest || 0}</td>
+                            <td>${r.paid_to_principal || 0}</td>
+                            <td>${r.cash || 0}</td>
+                            <td>${r.bank1 || 0}</td>
+                            <td>${r.bank2 || 0}</td>
+                            <td>${r.adjustment || 0}</td>
+                            <td>${formatDate(r.created_at)}</td>
+                        </tr>`;
                     });
                 }
 
-                // Show modal
-                document.getElementById("transactionModal").style.display = "flex";
+                html += `</tbody></table></div>`;
 
+                contentDiv.innerHTML = html;
             })
-            .catch(error => {
-                paymentsBody.innerHTML =
-                    `<tr><td colspan="11">Error loading payments</td></tr>`;
-                receiptsBody.innerHTML =
-                    `<tr><td colspan="13">Error loading receipts</td></tr>`;
-                console.error(error);
+            .catch(() => {
+                contentDiv.innerHTML = `<p>Error loading data</p>`;
             });
-
     });
-
 });
 
 function closeModal() {
@@ -434,6 +578,12 @@ document.getElementById("transactionModal").addEventListener("click", function (
         closeModal();
     }
 });
+
+function formatDate(dateStr) {
+    if (!dateStr) return "";
+    return dateStr.split("T")[0].split(" ")[0];
+}
+
 document.querySelectorAll(".row-download-btn").forEach(btn => {
 
     btn.addEventListener("click", function () {
@@ -451,14 +601,14 @@ document.querySelectorAll(".row-download-btn").forEach(btn => {
 
                 let csvContent = "";
 
-                // ===== PAYMENTS =====
+                /* ================= PAYMENTS ================= */
                 csvContent += "PAYMENTS\n";
 
                 if (data.payments && data.payments.length > 0) {
 
-                    // Header
+                    // Header (MATCHES TABLE)
                     csvContent +=
-                        "Code,Principal,Interest,Total,Payment Mode,Cash,Bank1,Bank2,Adjustment,Remarks,Created At\n";
+                        "Code,Principal,Interest,Total,Cash,Bank1,Bank2,Adjustment,Created At\n";
 
                     data.payments.forEach(p => {
                         csvContent +=
@@ -466,57 +616,53 @@ document.querySelectorAll(".row-download-btn").forEach(btn => {
                             `"${p.principal || 0}",` +
                             `"${p.interest || 0}",` +
                             `"${p.total || 0}",` +
-                            `"${p.payment_mode || ""}",` +
                             `"${p.cash || 0}",` +
                             `"${p.bank1 || 0}",` +
                             `"${p.bank2 || 0}",` +
                             `"${p.adjustment || 0}",` +
-                            `"${p.remarks || ""}",` +
-                            `"${p.created_at || ""}"\n`;
+                            `"${formatDate(p.created_at)}"\n`;
                     });
 
                 } else {
                     csvContent += "No Payments Found\n";
                 }
 
-                csvContent += "\n\n";
+                csvContent += "\n";
 
-                // ===== RECEIPTS =====
+                /* ================= RECEIPTS ================= */
                 csvContent += "RECEIPTS\n";
 
                 if (data.receipts && data.receipts.length > 0) {
 
+                    // Header (MATCHES TABLE)
                     csvContent +=
-                        "Code,Loan,Type of Loan,Total Payment,Paid to Interest,Paid to Principal,Payment Mode,Cash,Bank1,Bank2,Adjustment,Remarks,Created At\n";
+                        "Code,Type of Loan,Total Payment,Paid to Interest,Paid to Principal,Cash,Bank1,Bank2,Adjustment,Created At\n";
 
                     data.receipts.forEach(r => {
                         csvContent +=
                             `"${r.code || ""}",` +
-                            `"${r.loan_id || ""}",` +
                             `"${r.type_of_loan || ""}",` +
                             `"${r.total_payment || 0}",` +
                             `"${r.paid_to_interest || 0}",` +
                             `"${r.paid_to_principal || 0}",` +
-                            `"${r.payment_mode || ""}",` +
                             `"${r.cash || 0}",` +
                             `"${r.bank1 || 0}",` +
                             `"${r.bank2 || 0}",` +
                             `"${r.adjustment || 0}",` +
-                            `"${r.remarks || ""}",` +
-                            `"${r.created_at || ""}"\n`;
+                            `"${formatDate(r.created_at)}"\n`;
                     });
 
                 } else {
                     csvContent += "No Receipts Found\n";
                 }
 
-                // Download
-                let blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-                let url = URL.createObjectURL(blob);
+                /* ================= DOWNLOAD ================= */
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
 
-                let link = document.createElement("a");
+                const link = document.createElement("a");
                 link.href = url;
-                link.download = `Loan_${loanId}_Full_Report.csv`;
+                link.download = `Loan_${loanId}_Report.csv`;
 
                 document.body.appendChild(link);
                 link.click();
@@ -529,6 +675,156 @@ document.querySelectorAll(".row-download-btn").forEach(btn => {
 
     });
 
+});
+
+
+/* ================= LIVE SEARCH ================= */
+
+const searchInput = document.getElementById("searchInput");
+
+searchInput.addEventListener("keyup", function () {
+    const filter = this.value.toLowerCase().trim();
+    const rows = document.querySelectorAll("#reportTable tbody tr.main-row");
+
+    rows.forEach(row => {
+
+        const rowText = row.innerText.toLowerCase();
+        const detailRow = document.getElementById(
+            "details-" + row.querySelector(".view-btn-row")?.dataset.loanId
+        );
+
+        if (rowText.includes(filter)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+
+            // Also hide inline row if main row hidden
+            if (detailRow) {
+                detailRow.style.display = "none";
+            }
+        }
+    });
+});
+
+/* ================= TOP TABLE DOWNLOAD ================= */
+
+document.getElementById("downloadBtn").addEventListener("click", function () {
+
+    const table = document.getElementById("reportTable");
+    let csvContent = "";
+
+    // Get headers
+    const headers = table.querySelectorAll("thead th");
+    headers.forEach((th, index) => {
+        // Skip Actions column
+        if (th.innerText.trim() !== "Actions") {
+            csvContent += `"${th.innerText.trim()}"`;
+            if (index < headers.length - 2) csvContent += ",";
+        }
+    });
+    csvContent += "\n";
+
+    // Get visible rows only
+    const rows = table.querySelectorAll("tbody tr.main-row");
+
+    rows.forEach(row => {
+
+        if (row.style.display === "none") return; // Skip hidden rows (search filtered)
+
+        const cells = row.querySelectorAll("td");
+
+        cells.forEach((td, index) => {
+            // Skip last column (Actions)
+            if (index < cells.length - 1) {
+                csvContent += `"${td.innerText.trim()}",`;
+            }
+        });
+
+        csvContent = csvContent.replace(/,+$/, ""); // remove trailing comma
+        csvContent += "\n";
+    });
+
+    if (csvContent.trim() === "") {
+        alert("No data to download");
+        return;
+    }
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "Report.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+/* ================= DATE FILTER ================= */
+
+const fromDateInput = document.getElementById("fromDate");
+const toDateInput = document.getElementById("toDate");
+const clearBtn = document.getElementById("clearFiltersBtn");
+
+function filterByDate() {
+
+    const fromValue = fromDateInput.value;
+    const toValue = toDateInput.value;
+
+    const rows = document.querySelectorAll("#reportTable tbody tr.main-row");
+
+    rows.forEach(row => {
+
+        const dateCell = row.querySelector("td:nth-last-child(2)"); 
+        // second last column = Created At
+
+        if (!dateCell) return;
+
+        const rowDate = dateCell.innerText.trim();
+
+        if (!rowDate) {
+            row.style.display = "";
+            return;
+        }
+
+        const rowDateObj = new Date(rowDate);
+        const fromDateObj = fromValue ? new Date(fromValue) : null;
+        const toDateObj = toValue ? new Date(toValue) : null;
+
+        let show = true;
+
+        if (fromDateObj && rowDateObj < fromDateObj) {
+            show = false;
+        }
+
+        if (toDateObj && rowDateObj > toDateObj) {
+            show = false;
+        }
+
+        row.style.display = show ? "" : "none";
+
+        // Hide inline detail row if main row hidden
+        const loanId = row.querySelector(".view-btn-row")?.dataset.loanId;
+        const detailRow = document.getElementById("details-" + loanId);
+        if (!show && detailRow) {
+            detailRow.style.display = "none";
+        }
+    });
+}
+
+// Trigger filter on change
+fromDateInput.addEventListener("change", filterByDate);
+toDateInput.addEventListener("change", filterByDate);
+
+// Clear button
+clearBtn.addEventListener("click", function () {
+    fromDateInput.value = "";
+    toDateInput.value = "";
+
+    document.querySelectorAll("#reportTable tbody tr.main-row").forEach(row => {
+        row.style.display = "";
+    });
 });
 </script>
 

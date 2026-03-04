@@ -613,31 +613,52 @@ function recalcSummaryAfterFilter() {
         const paymentStartDate = document.getElementById('payment-start-date');
         const paymentEndDate = document.getElementById('payment-end-date');
         
-        function filterTable(tableId, startDateId, endDateId) {
-            const table = document.getElementById(tableId);
-            const rows = table.querySelectorAll('tbody tr');
-            const startDate = new Date(document.getElementById(startDateId).value);
-            const endDate = new Date(document.getElementById(endDateId).value);
+    function filterTable(tableId, startDateId, endDateId) {
+        const table = document.getElementById(tableId);
+        const rows = table.querySelectorAll('tbody tr');
+        const startValue = document.getElementById(startDateId).value;
+        const endValue = document.getElementById(endDateId).value;
 
-            rows.forEach(row => {
-                const rowDate = new Date(row.getAttribute('data-date'));
-                if ((startDate === "Invalid Date" || rowDate >= startDate) &&
-                    (endDate === "Invalid Date" || rowDate <= endDate)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-        }
+        const startDate = startValue ? new Date(startValue) : null;
+        const endDate = endValue ? new Date(endValue) : null;
 
-        receiptStartDate.addEventListener('change', () => filterTable('receipts-table', 'receipt-start-date', 'receipt-end-date'));
-        receiptEndDate.addEventListener('change', () => filterTable('receipts-table', 'receipt-start-date', 'receipt-end-date'));
-        paymentStartDate.addEventListener('change', () => filterTable('payments-table', 'payment-start-date', 'payment-end-date'));
-        paymentEndDate.addEventListener('change', () => filterTable('payments-table', 'payment-start-date', 'payment-end-date'));
+        rows.forEach(row => {
+            const rowDate = new Date(row.getAttribute('data-date'));
+
+            let show = true;
+
+            if(startDate && rowDate < startDate) show = false;
+            if(endDate && rowDate > endDate) show = false;
+
+            row.style.display = show ? '' : 'none';
+        });
+
+        // 👇 VERY IMPORTANT
+        addFilteredTotalRow(tableId);
+        calculateSummary();  // update summary table also
+    }
+
+       receiptStartDate.addEventListener('change', () =>
+    filterTable('receipts-table', 'receipt-start-date', 'receipt-end-date')
+);
+
+receiptEndDate.addEventListener('change', () =>
+    filterTable('receipts-table', 'receipt-start-date', 'receipt-end-date')
+);
+
+paymentStartDate.addEventListener('change', () =>
+    filterTable('payments-table', 'payment-start-date', 'payment-end-date')
+);
+
+paymentEndDate.addEventListener('change', () =>
+    filterTable('payments-table', 'payment-start-date', 'payment-end-date')
+);
+        addFilteredTotalRow(tableId);
     });
 
 
-
+addFilteredTotalRow("receipts-table");
+addFilteredTotalRow("payments-table");
 
 
     
@@ -683,6 +704,8 @@ function calculateRowAmounts(tableId){
 document.addEventListener("DOMContentLoaded",()=>{
     calculateRowAmounts("receipts-table");
     calculateRowAmounts("payments-table");
+    addFilteredTotalRow("receipts-table");
+addFilteredTotalRow("payments-table");
 });
 </script>
 <script>
@@ -705,6 +728,7 @@ function calculateFooterAmountTotal(tableId, footerId){
 document.addEventListener("DOMContentLoaded",()=>{
     calculateFooterAmountTotal("receipts-table","receipts-total-amount");
     calculateFooterAmountTotal("payments-table","payments-total-amount");
+    
 });
 </script>
 <script>
@@ -739,9 +763,73 @@ function formatIndianNumber(value) {
 
     return sign + formatted + "." + decimalPart;
 }
+
+
+
 </script>
 
+<script>
+function addFilteredTotalRow(tableId){
 
+    const table = document.getElementById(tableId);
+    const tbody = table.querySelector("tbody");
+    const tfoot = table.querySelector("tfoot");
+
+    if(!table || !tbody || !tfoot) return;
+
+    // Remove existing filtered row if already present
+    const oldRow = tfoot.querySelector(".filtered-total-row");
+    if(oldRow) oldRow.remove();
+
+    let totalCash = 0;
+    let totalBank1 = 0;
+    let totalBank2 = 0;
+    let totalAdj = 0;
+    let totalAmount = 0;
+
+    const rows = tbody.querySelectorAll("tr");
+
+    rows.forEach(row => {
+        if(row.style.display !== "none"){
+
+            const cash  = parseFloat(row.cells[5]?.innerText.replace(/,/g,'')) || 0;
+            const bank1 = parseFloat(row.cells[6]?.innerText.replace(/,/g,'')) || 0;
+            const bank2 = parseFloat(row.cells[7]?.innerText.replace(/,/g,'')) || 0;
+            const adj   = parseFloat(row.cells[8]?.innerText.replace(/,/g,'')) || 0;
+            const amt   = parseFloat(row.cells[9]?.innerText.replace(/[₹,]/g,'')) || 0;
+
+            totalCash += cash;
+            totalBank1 += bank1;
+            totalBank2 += bank2;
+            totalAdj += adj;
+            totalAmount += amt;
+        }
+    });
+
+    const tr = document.createElement("tr");
+    tr.classList.add("filtered-total-row");
+
+    tr.innerHTML = `
+        <th>Filtered Total</th>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="text-align:right;">${formatIndianNumber(totalCash)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalBank1)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalBank2)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalAdj)}</td>
+        <td style="text-align:right;">₹ ${formatIndianNumber(totalAmount)}</td>
+    `;
+
+    tr.style.backgroundColor = "#fff59d"; // yellow
+    tr.style.fontWeight = "600";
+
+    // Insert ABOVE the green total row
+    tfoot.insertBefore(tr, tfoot.firstElementChild);
+    
+}
+</script>
 <style>
 .cw-card{
     border:1px solid #e0e0e0;

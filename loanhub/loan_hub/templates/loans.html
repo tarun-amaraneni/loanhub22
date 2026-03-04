@@ -312,12 +312,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             </button>
         </a>
 
-        <a href="{% url 'loan_repayment_list' item.loan.id %}" 
- title="View" >
-            <button type="button" class="view-btn">
-                <i class="fas fa-eye"></i>
-            </button>
-        </a>
+<a href="{% url 'loan_repayment_list' item.loan.id %}" title="View All Loans">
+    <button type="button" class="view-btn">
+        <i class="fas fa-eye"></i>
+    </button>
+</a>
 
     </div>
     {% endif %}

@@ -41,87 +41,66 @@ from datetime import datetime
 
 from .models import User, Loan, LoanRepayment, generate_unique_repayment_code
 from .services import process_loan_repayment
+from decimal import Decimal, InvalidOperation
+from datetime import datetime
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.utils import timezone
 
+from .models import User, Loan, LoanRepayment, generate_unique_repayment_code
+from .services import process_loan_repayment
+
+
+from django.http import HttpResponse
+from .pdf_utils import build_user_pdf, build_single_loan_pdf
+from .models import Loan, LoanRepayment, OtherCashTransaction, User
 def loans_view(request):
     loan_types = ['MTL LOAN', 'FDL LOAN', 'KVP/NSC LOAN']
     loans = []
     user_name = None
     gen_no = None
 
-    # -----------------------------
-    # GET: fetch GEN NO
-    # -----------------------------
+    # =========================
+    # GET: Display loans
+    # =========================
     if request.method == 'GET':
         gen_no = request.GET.get('gen_no', '').strip()
+        if gen_no:
+            user = User.objects.filter(code=gen_no).first()
+            user_name = user.name if user else 'Unknown'
 
-    # -----------------------------
-    # POST: create repayment
-    # -----------------------------
+            for loan_type in loan_types:
+                loans_queryset = Loan.objects.filter(
+                    gen_no=gen_no,
+                    type_of_loan=loan_type,
+                    loan_status='Active'
+                )
+
+                for loan in loans_queryset:
+                    # Recalculate interest & principal
+                    process_loan_repayment(loan)
+                    loan.refresh_from_db()
+
+                    loans.append({
+                        'loan_type': loan_type,
+                        'loan': loan,
+                        'balance': loan.balance,
+                        'interest': loan.interest,
+                        'loan_code': loan.code,
+                    })
+
+    # =========================
+    # POST: Create repayment
+    # =========================
     if request.method == 'POST':
         gen_no = request.POST.get('gen_no', '').strip()
         loan_id = request.POST.get('loan_id')
 
-        if loan_id:
-            try:
-                loan = Loan.objects.get(id=loan_id)
+        if gen_no:
+            user = User.objects.filter(code=gen_no).first()
+            user_name = user.name if user else 'Unknown'
 
-                def get_decimal(field):
-                    try:
-                        return Decimal(request.POST.get(field, '0') or '0')
-                    except InvalidOperation:
-                        return Decimal('0')
-
-                cash  = get_decimal('cash')
-                bank1 = get_decimal('bank1')
-                bank2 = get_decimal('bank2')
-                adj   = get_decimal('adj')
-
-                total_payment = cash + bank1 + bank2 + adj
-
-                if total_payment <= 0:
-                    return JsonResponse(
-                        {'status': 'error', 'message': 'Invalid payment'},
-                        status=400
-                    )
-
-                date_str = request.POST.get('date')
-                repayment_date = datetime.strptime(date_str, "%Y-%m-%d") if date_str else timezone.now()
-
-                repayment = LoanRepayment.objects.create(
-                    loan=loan,
-                    total_payment=total_payment,
-                    paid_to_interest=Decimal('0.00'),
-                    paid_to_principal=Decimal('0.00'),
-                    payment_mode='mixed',
-                    remarks='',
-                    cash=cash,
-                    bank1=bank1,
-                    bank2=bank2,
-                    adj=adj,
-                    code=generate_unique_repayment_code(),
-                    type_of_loan=loan.type_of_loan,
-                    created_at=repayment_date
-                )
-
-                process_loan_repayment(loan)
-
-                return JsonResponse({'status': 'success'})
-
-            except Loan.DoesNotExist:
-                return JsonResponse({'status': 'error', 'message': 'Loan not found'}, status=404)
-            except Exception as e:
-                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
-
-    # -----------------------------
-    # DISPLAY LOANS
-    # -----------------------------
-# -----------------------------
-# DISPLAY LOANS (READ-ONLY)
-# -----------------------------
-    if gen_no:
-        user = User.objects.filter(code=gen_no).first()
-        user_name = user.name if user else 'Unknown'
-
+        # Load all active loans for display
         for loan_type in loan_types:
             loans_queryset = Loan.objects.filter(
                 gen_no=gen_no,
@@ -130,40 +109,84 @@ def loans_view(request):
             )
 
             for loan in loans_queryset:
-                # ❌ DO NOT RECALCULATE HERE
-
-                repayments = LoanRepayment.objects.filter(loan=loan).aggregate(
-                    total_paid_principal=Coalesce(
-                        Sum('paid_to_principal'),
-                        Value(0),
-                        output_field=DecimalField()
-                    ),
-                    total_paid_interest=Coalesce(
-                        Sum('paid_to_interest'),
-                        Value(0),
-                        output_field=DecimalField()
-                    )
-                )
-
-                remaining_principal = loan.amount - repayments['total_paid_principal']
-                remaining_interest = loan.interest  # already stored value
-
-                if remaining_principal <= 0 and remaining_interest <= 0:
-                    loan.loan_status = 'Closed'
-                    loan.save(update_fields=['loan_status'])
-                    continue
-
+                process_loan_repayment(loan)
+                loan.refresh_from_db()
                 loans.append({
                     'loan_type': loan_type,
                     'loan': loan,
-                    'balance': remaining_principal,
-                    'interest': remaining_interest,
+                    'balance': loan.balance,
+                    'interest': loan.interest,
                     'loan_code': loan.code,
                 })
-    # -----------------------------
-    # FILL EMPTY TYPES
-    # -----------------------------
-    existing_types = {item['loan_type'] for item in loans}
+
+        # Handle repayment POST
+        if loan_id:
+            try:
+                loan = Loan.objects.get(id=loan_id)
+
+                def get_decimal(field_name):
+                    try:
+                        return Decimal(request.POST.get(field_name, "0") or "0")
+                    except InvalidOperation:
+                        return Decimal("0")
+
+                cash  = get_decimal('cash')
+                bank1 = get_decimal('bank1')
+                bank2 = get_decimal('bank2')
+                adj   = get_decimal('adj')
+
+                total_payment = cash + bank1 + bank2 + adj
+                if total_payment <= 0:
+                    return JsonResponse({'status': 'error', 'message': 'Invalid payment'}, status=400)
+
+                # Ensure DB balance/interest is updated before allocation
+                process_loan_repayment(loan)
+                loan.refresh_from_db()
+
+                paid_to_interest = min(loan.interest, total_payment)
+                total_payment -= paid_to_interest
+                paid_to_principal = min(loan.balance, total_payment)
+                total_payment -= paid_to_principal
+
+                date_str = request.POST.get('date')
+                repayment_datetime = timezone.now()
+                if date_str:
+                    try:
+                        repayment_datetime = datetime.strptime(date_str, "%Y-%m-%d")
+                    except ValueError:
+                        pass
+
+                repayment = LoanRepayment.objects.create(
+                    loan=loan,
+                    total_payment=cash + bank1 + bank2 + adj,
+                    paid_to_interest=paid_to_interest,
+                    paid_to_principal=paid_to_principal,
+                    payment_mode='mixed',
+                    remarks='',
+                    cash=cash,
+                    bank1=bank1,
+                    bank2=bank2,
+                    adj=adj,
+                    code=generate_unique_repayment_code(),
+                    type_of_loan=loan.type_of_loan,
+                    created_at=repayment_datetime
+                )
+
+                # Update loan DB after repayment
+                process_loan_repayment(loan)
+                loan.refresh_from_db()
+
+                return JsonResponse({'status': 'success'})
+
+            except Loan.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Loan not found'}, status=404)
+            except Exception as e:
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    # =========================
+    # Fill empty loan types
+    # =========================
+    existing_types = {x['loan_type'] for x in loans}
     for loan_type in loan_types:
         if loan_type not in existing_types:
             loans.append({
@@ -171,7 +194,7 @@ def loans_view(request):
                 'loan': None,
                 'balance': Decimal('0.00'),
                 'interest': Decimal('0.00'),
-                'loan_code': ''
+                'loan_code': '',
             })
 
     return render(request, 'loans.html', {
@@ -180,8 +203,6 @@ def loans_view(request):
         'user_name': user_name,
         'gen_no': gen_no,
     })
-
-
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from decimal import Decimal, InvalidOperation
@@ -3615,50 +3636,58 @@ def add_loan_view(request):
     else:
         form = LoanForm()
     return render(request, 'add_loan.html', {'form': form})
-
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from .models import Loan
-
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from decimal import Decimal, InvalidOperation
+from datetime import datetime
+from .models import Loan, LoanRepayment
+from .services import process_loan_repayment
+from .models import generate_unique_repayment_code
 
 def loanadd(request):
     if request.method == "POST":
-        gen_nos  = request.POST.getlist('gen_no[]')
-        names    = request.POST.getlist('name[]')
-        types    = request.POST.getlist('type[]')
-        cashes   = request.POST.getlist('cash[]')
-        bank1s   = request.POST.getlist('bank1[]')
-        bank2s   = request.POST.getlist('bank2[]')
-        adjs     = request.POST.getlist('adj[]')
-        dates    = request.POST.getlist('date[]')
+        modes     = request.POST.getlist('mode[]')
+        gen_nos   = request.POST.getlist('gen_no[]')
+        names     = request.POST.getlist('name[]')
+        types     = request.POST.getlist('loan_type[]')
+        cashes    = request.POST.getlist('cash[]')
+        bank1s    = request.POST.getlist('bank1[]')
+        bank2s    = request.POST.getlist('bank2[]')
+        adjs      = request.POST.getlist('adj[]')
+        dates     = request.POST.getlist('date[]')
+        loan_ids  = request.POST.getlist('loan_id[]')
+
+        def to_decimal(val):
+            try:
+                return Decimal(val or '0')
+            except (InvalidOperation, TypeError):
+                return Decimal('0')
 
         for i in range(len(gen_nos)):
+            mode = modes[i]
             gen_no = gen_nos[i].strip()
-            type_of_loan = types[i].strip()
 
-            # skip empty rows
-            if not gen_no or not type_of_loan:
+            if not mode or not gen_no:
                 continue
 
             name = names[i].strip() if i < len(names) else ""
-
-            # safe Decimal parsing
-            def to_decimal(val):
-                try:
-                    return Decimal(val)
-                except (InvalidOperation, TypeError):
-                    return Decimal('0')
+            loan_type = types[i].strip() if i < len(types) else ""
 
             cash  = to_decimal(cashes[i])
             bank1 = to_decimal(bank1s[i])
             bank2 = to_decimal(bank2s[i])
             adj   = to_decimal(adjs[i])
 
-            amount = cash + bank1 + bank2 + adj
+            total_amount = cash + bank1 + bank2 + adj
+            if total_amount <= 0:
+                continue
 
-            # date parsing
+            # Date
             if dates[i]:
                 try:
                     created_at = datetime.strptime(dates[i], "%Y-%m-%d")
@@ -3667,25 +3696,80 @@ def loanadd(request):
             else:
                 created_at = timezone.now()
 
-            Loan.objects.create(
-                gen_no=gen_no,
-                name=name,
-                type_of_loan=type_of_loan,
-                amount=amount,
-                cash=str(cash),
-                bank1=str(bank1),
-                bank2=str(bank2),
-                adj=str(adj),
-                created_at=created_at,
-                loan_status='Active'
-            )
+            # ==================================================
+            # 🟢 ISSUE NEW LOAN
+            # ==================================================
+# ==================================================
+# 🟢 ISSUE NEW LOAN
+# ==================================================
+            if mode == "issue":
+                if not loan_type:
+                    continue
+
+                loan = Loan(
+                    gen_no=gen_no,
+                    name=name,
+                    type_of_loan=loan_type,
+                    amount=total_amount,
+                    cash=str(cash),
+                    bank1=str(bank1),
+                    bank2=str(bank2),
+                    adj=str(adj),
+                    created_at=created_at,
+                    loan_status='Active'
+                )
+
+                user_loan_id = loan_ids[i].strip() if i < len(loan_ids) else ""
+                if user_loan_id:
+                    loan.code = user_loan_id  # optional
+
+                loan.save()  # auto-generate code if empty
+
+                # 🟢 Recalculate interest for the new loan immediately
+                loan.interest = Decimal('0.00')  # reset just in case
+                loan.save(update_fields=['interest'])
+                process_loan_repayment(loan)
+            # ==================================================
+            # 🔵 MANAGE EXISTING LOAN (REPAYMENT)
+            # ==================================================
+# 🔵 MANAGE EXISTING LOAN (REPAYMENT)
+            elif mode == "existing":
+                loan_code = loan_ids[i].strip()
+                if not loan_code:
+                    continue
+
+                try:
+                    loan = Loan.objects.get(code=loan_code)
+
+                    repayment = LoanRepayment.objects.create(
+                        loan=loan,
+                        total_payment=total_amount,
+                        paid_to_interest=Decimal('0.00'),  # initially zero
+                        paid_to_principal=Decimal('0.00'),
+                        payment_mode='mixed',
+                        remarks='',
+                        cash=cash,
+                        bank1=bank1,
+                        bank2=bank2,
+                        adj=adj,
+                        code=generate_unique_repayment_code(),
+                        type_of_loan=loan.type_of_loan,
+                        created_at=created_at
+                    )
+
+                    # 🟢 Reset interest before recalculation to avoid double-counting
+                    loan.interest = Decimal('0.00')
+                    loan.save(update_fields=['interest'])
+
+                    # Recalculate interest and principal allocations
+                    process_loan_repayment(loan)
+
+                except Loan.DoesNotExist:
+                    continue
 
         return redirect('loanadd')
 
-    # GET request – empty page, JS adds first row
     return render(request, 'loanadd.html')
-
-
 
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
@@ -4089,8 +4173,140 @@ from django.shortcuts import render, get_object_or_404, redirect
 from .models import Loan, LoanRepayment
 
 
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.db.models import Sum
+from decimal import Decimal, InvalidOperation
+from .models import Loan, LoanRepayment
+
+
 def loan_repayment_list(request, loan_id):
+    # --------------------------------------------
+    # SELECTED LOAN (user clicked this)
+    # --------------------------------------------
+    selected_loan = get_object_or_404(Loan, id=loan_id)
+
+    # --------------------------------------------
+    # FETCH ALL LOANS OF SAME GEN NO
+    # --------------------------------------------
+    loans = Loan.objects.filter(gen_no=selected_loan.gen_no).order_by('-id')
+
+    from_date = request.GET.get('from_date')
+    to_date = request.GET.get('to_date')
+
+    loan_data = []
+
+    # ============================================================
+    # LOOP EACH LOAN (so we show multiple loan tables)
+    # ============================================================
+    for loan in loans:
+
+        repayments = LoanRepayment.objects.filter(
+            loan=loan
+        ).order_by('-created_at')
+
+        # ---------------- DATE FILTER ----------------
+        if from_date:
+            repayments = repayments.filter(created_at__date__gte=from_date)
+
+        if to_date:
+            repayments = repayments.filter(created_at__date__lte=to_date)
+
+        # ---------------- POST: EDIT / DELETE ----------------
+        if request.method == 'POST':
+            for repayment in repayments:
+                save_btn = f"save_{repayment.code}"
+                delete_btn = f"delete_{repayment.code}"
+
+                # ---------- DELETE ----------
+                if delete_btn in request.POST:
+                    repayment.delete()
+                    return redirect(request.get_full_path())
+
+                # ---------- EDIT ----------
+                if save_btn in request.POST:
+
+                    def get_decimal(name):
+                        try:
+                            return Decimal(request.POST.get(name, '0').strip() or '0')
+                        except (InvalidOperation, TypeError):
+                            return Decimal('0')
+
+                    cash = get_decimal(f"cash_{repayment.code}")
+                    bank1 = get_decimal(f"bank1_{repayment.code}")
+                    bank2 = get_decimal(f"bank2_{repayment.code}")
+                    adj = get_decimal(f"adj_{repayment.code}")
+
+                    total_payment = cash + bank1 + bank2 + adj
+
+                    # ---------- RECALCULATE SPLIT ----------
+                    previous = LoanRepayment.objects.filter(
+                        loan=loan
+                    ).exclude(id=repayment.id).aggregate(
+                        total_principal=Sum('paid_to_principal'),
+                        total_interest=Sum('paid_to_interest')
+                    )
+
+                    total_paid_principal = previous['total_principal'] or Decimal('0')
+                    total_paid_interest = previous['total_interest'] or Decimal('0')
+
+                    loan_amount = loan.amount or Decimal('0')
+                    loan_interest = loan.interest or Decimal('0')
+
+                    remaining_principal = loan_amount - total_paid_principal
+                    remaining_interest = loan_interest - total_paid_interest
+
+                    paid_to_interest = min(remaining_interest, total_payment)
+                    leftover = total_payment - paid_to_interest
+                    paid_to_principal = min(remaining_principal, leftover)
+
+                    # ---------- SAVE ----------
+                    repayment.cash = cash
+                    repayment.bank1 = bank1
+                    repayment.bank2 = bank2
+                    repayment.adj = adj
+                    repayment.total_payment = total_payment
+                    repayment.paid_to_interest = paid_to_interest
+                    repayment.paid_to_principal = paid_to_principal
+                    repayment.save()
+
+                    return redirect(request.get_full_path())
+
+        # ---------------- SUMMARY TOTALS PER LOAN ----------------
+        totals = repayments.aggregate(
+            total_cash=Sum('cash'),
+            total_bank1=Sum('bank1'),
+            total_bank2=Sum('bank2'),
+            total_adj=Sum('adj'),
+            total_payment=Sum('total_payment'),
+        )
+
+        loan_data.append({
+            "loan": loan,
+            "repayments": repayments,
+            "totals": totals,
+        })
+
+    # ============================================================
+    # FINAL RENDER
+    # ============================================================
+    return render(
+        request,
+        'loan_repayment_list.html',
+        {
+            "loan_data": loan_data,
+            "gen_no": selected_loan.gen_no,
+            "from_date": from_date,
+            "to_date": to_date,
+        }
+    )
+
+
+
+
+def loan_repayment_listd(request, loan_id):
     loan = get_object_or_404(Loan, id=loan_id)
+    source = request.GET.get('source')
 
     # ---------------- BASE QUERY ----------------
     repayments = LoanRepayment.objects.filter(
@@ -4168,8 +4384,9 @@ def loan_repayment_list(request, loan_id):
                 repayment.save()
 
                 return redirect(
-                    f"{request.path}?from_date={from_date or ''}&to_date={to_date or ''}"
+                    f"{request.path}?source={source or ''}&from_date={from_date or ''}&to_date={to_date or ''}"
                 )
+
 
     # ---------------- SUMMARY TOTALS ----------------
     totals = repayments.aggregate(
@@ -4182,15 +4399,123 @@ def loan_repayment_list(request, loan_id):
     # ---------------- RENDER ----------------
     return render(
         request,
-        'loan_repayment_list.html',
+        'loan_repayment_listd.html',
         {
             'loan': loan,
             'repayments': repayments,
             'totals': totals,
             'from_date': from_date,
-            'to_date': to_date
+            'to_date': to_date,
+            'source': source,  # ✅ Add this
         }
     )
+
+# 26
+
+from django.shortcuts import render, get_object_or_404
+from .models import Loan, LoanRepayment
+
+
+def loan_transactions_view(request, loan_id):
+    # Get the clicked loan first
+    selected_loan = get_object_or_404(Loan, id=loan_id)
+
+    # Get ALL loans of this user using GEN NO
+    loans = Loan.objects.filter(gen_no=selected_loan.gen_no).order_by('-id')
+
+    loan_data = []
+
+    for loan in loans:
+        repayments = LoanRepayment.objects.filter(
+            loan_id=loan.id
+        ).order_by('-created_at')
+
+        loan_data.append({
+            "loan": loan,
+            "repayments": repayments
+        })
+
+    context = {
+        "loan_data": loan_data,
+        "gen_no": selected_loan.gen_no
+    }
+
+    return render(request, "loan_transactions.html", context)
+
+
+
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from .models import Loan, LoanRepayment
+from .pdf_utils import build_user_pdf, build_single_loan_pdf
+
+
+# =====================================================
+# DOWNLOAD FULL USER REPORT (ALL LOANS + ALL REPAYMENTS)
+# =====================================================
+# def download_user_pdf(request, gen_no):
+#     """
+#     Fetch complete database data:
+#     GEN_NO → Loans → LoanRepayments
+#     """
+
+#     # Get all loans for this GEN_NO
+#     loans = Loan.objects.filter(gen_no=gen_no).order_by("id")
+
+#     if not loans.exists():
+#         return HttpResponse("No data found for this GEN NO")
+
+#     # Build structured data for PDF
+#     loan_blocks = []
+
+#     for loan in loans:
+#         # repayments = LoanRepayment.objects.filter(
+#         #     loan_id=loan.id
+#         # ).order_by("date")  # change field if your date field name differs
+
+#         repayments = LoanRepayment.objects.filter(
+#     loan_id=loan.id
+# ).order_by("created_at")
+
+#         loan_blocks.append({
+#             "loan": loan,
+#             "repayments": repayments
+#         })
+
+#     # Create PDF response
+#     response = HttpResponse(content_type="application/pdf")
+#     response["Content-Disposition"] = f'attachment; filename="{gen_no}_Full_Report.pdf"'
+
+#     # Send COMPLETE data to PDF builder
+#     build_user_pdf(response, gen_no, loan_blocks)
+
+#     return response
+
+
+# =====================================================
+# DOWNLOAD SINGLE LOAN REPORT (ONE LOAN + ITS REPAYMENTS)
+# =====================================================
+def download_loan_pdf(request, loan_id):
+    """
+    Fetch single loan + all its repayments
+    """
+
+    loan = get_object_or_404(Loan, id=loan_id)
+
+    # repayments = LoanRepayment.objects.filter(
+    #     loan_id=loan.id
+    # ).order_by("date")
+
+    repayments = LoanRepayment.objects.filter(
+    loan_id=loan.id
+).order_by("created_at")
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="Loan_{loan.code}.pdf"'
+
+    build_single_loan_pdf(response, loan, repayments)
+
+    return response
 
 
 
@@ -4406,3 +4731,221 @@ def loan_transactions_view(request, loan_id):
         "payments": payment_data,
         "receipts": receipt_data
     })
+
+from django.http import JsonResponse
+from django.http import JsonResponse
+
+def active_loans_api(request):
+    gen_no = request.GET.get('gen_no')
+
+    loans = Loan.objects.filter(
+        gen_no=gen_no,
+        loan_status='Active'
+    ).values('code', 'type_of_loan')
+
+    return JsonResponse(
+        [
+            {
+                'code': loan['code'],
+                'type': loan['type_of_loan']
+            }
+            for loan in loans
+        ],
+        safe=False
+    )
+
+
+
+
+
+from decimal import Decimal, InvalidOperation
+from datetime import datetime
+from django.utils import timezone
+from django.shortcuts import redirect
+from .models import Loan, LoanRepayment, generate_unique_repayment_code
+from .services import process_loan_repayment
+
+def payments_receipts_add(request):
+    if request.method == "POST":
+        # ========== PAYMENTS ==========
+        rep_gen_nos   = request.POST.getlist('rep_gen_no[]')
+        rep_names     = request.POST.getlist('rep_name[]')
+        rep_loan_ids  = request.POST.getlist('rep_loan_id[]')
+        rep_types     = request.POST.getlist('rep_type[]')
+        rep_cashes    = request.POST.getlist('rep_cash[]')
+        rep_bank1s    = request.POST.getlist('rep_bank1[]')
+        rep_bank2s    = request.POST.getlist('rep_bank2[]')
+        rep_adjs      = request.POST.getlist('rep_adj[]')
+        rep_dates     = request.POST.getlist('rep_date[]')
+
+        # ========== RECEIPTS ==========
+        rec_gen_nos   = request.POST.getlist('rec_gen_no[]')
+        rec_names     = request.POST.getlist('rec_name[]')
+        rec_loan_ids  = request.POST.getlist('rec_loan_id[]')
+        rec_types     = request.POST.getlist('rec_type[]')
+        rec_cashes    = request.POST.getlist('rec_cash[]')
+        rec_bank1s    = request.POST.getlist('rec_bank1[]')
+        rec_bank2s    = request.POST.getlist('rec_bank2[]')
+        rec_adjs      = request.POST.getlist('rec_adj[]')
+        rec_dates     = request.POST.getlist('rec_date[]')
+
+        def to_decimal(val):
+            try:
+                return Decimal(val)
+            except (InvalidOperation, TypeError):
+                return Decimal('0')
+
+        # ---------- PROCESS PAYMENTS ----------
+        for i in range(len(rep_gen_nos)):
+            gen_no = rep_gen_nos[i].strip()
+            loan_id = rep_loan_ids[i].strip()
+            if not gen_no or not loan_id:
+                continue
+
+            try:
+                loan = Loan.objects.get(code=loan_id)
+            except Loan.DoesNotExist:
+                continue
+
+            cash  = to_decimal(rep_cashes[i])
+            bank1 = to_decimal(rep_bank1s[i])
+            bank2 = to_decimal(rep_bank2s[i])
+            adj   = to_decimal(rep_adjs[i])
+            total_payment = cash + bank1 + bank2 + adj
+
+            if total_payment <= 0:
+                continue
+
+            date_str = rep_dates[i]
+            created_at = timezone.now()
+            if date_str:
+                try:
+                    created_at = datetime.strptime(date_str, "%Y-%m-%d")
+                except ValueError:
+                    pass
+
+            # Allocate to interest first
+            process_loan_repayment(loan)
+            loan.refresh_from_db()
+            paid_to_interest = min(loan.interest, total_payment)
+            remaining = total_payment - paid_to_interest
+            paid_to_principal = min(loan.balance, remaining)
+
+            LoanRepayment.objects.create(
+                loan=loan,
+                total_payment=total_payment,
+                paid_to_interest=paid_to_interest,
+                paid_to_principal=paid_to_principal,
+                payment_mode='mixed',
+                remarks='Payment',
+                cash=cash,
+                bank1=bank1,
+                bank2=bank2,
+                adj=adj,
+                code=generate_unique_repayment_code(),
+                type_of_loan=loan.type_of_loan,
+                created_at=created_at
+            )
+
+            process_loan_repayment(loan)
+            loan.refresh_from_db()
+
+        # ---------- PROCESS RECEIPTS ----------
+        for i in range(len(rec_gen_nos)):
+            gen_no = rec_gen_nos[i].strip()
+            loan_id = rec_loan_ids[i].strip()
+            if not gen_no or not loan_id:
+                continue
+
+            try:
+                loan = Loan.objects.get(code=loan_id)
+            except Loan.DoesNotExist:
+                continue
+
+            cash  = to_decimal(rec_cashes[i])
+            bank1 = to_decimal(rec_bank1s[i])
+            bank2 = to_decimal(rec_bank2s[i])
+            adj   = to_decimal(rec_adjs[i])
+            total_payment = cash + bank1 + bank2 + adj
+
+            if total_payment <= 0:
+                continue
+
+            date_str = rec_dates[i]
+            created_at = timezone.now()
+            if date_str:
+                try:
+                    created_at = datetime.strptime(date_str, "%Y-%m-%d")
+                except ValueError:
+                    pass
+
+            process_loan_repayment(loan)
+            loan.refresh_from_db()
+            paid_to_interest = min(loan.interest, total_payment)
+            remaining = total_payment - paid_to_interest
+            paid_to_principal = min(loan.balance, remaining)
+
+            LoanRepayment.objects.create(
+                loan=loan,
+                total_payment=total_payment,
+                paid_to_interest=paid_to_interest,
+                paid_to_principal=paid_to_principal,
+                payment_mode='mixed',
+                remarks='Receipt',
+                cash=cash,
+                bank1=bank1,
+                bank2=bank2,
+                adj=adj,
+                code=generate_unique_repayment_code(),
+                type_of_loan=loan.type_of_loan,
+                created_at=created_at
+            )
+
+            process_loan_repayment(loan)
+            loan.refresh_from_db()
+
+        return redirect('payments_receipts_add')
+
+    return render(request, 'payments_receipts.html')
+
+
+
+
+def download_user_pdf(request, gen_no, report_type):
+
+    loans = Loan.objects.filter(gen_no=gen_no)
+
+    if report_type == "active":
+        loans = loans.filter(loan_status__iexact="active")
+        filename = f"{gen_no}_Active_Loans.pdf"
+
+    elif report_type == "closed":
+        loans = loans.filter(loan_status__iexact="closed")
+        filename = f"{gen_no}_Closed_Loans.pdf"
+
+    else:
+        filename = f"{gen_no}_Full_Report.pdf"
+
+    loans = loans.order_by("id")
+
+    if not loans.exists():
+        return HttpResponse("No matching loan data found.")
+
+    loan_blocks = []
+
+    for loan in loans:
+        repayments = LoanRepayment.objects.filter(
+            loan_id=loan.id
+        ).order_by("created_at")
+
+        loan_blocks.append({
+            "loan": loan,
+            "repayments": repayments
+        })
+
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    build_user_pdf(response, gen_no, loan_blocks)
+
+    return response

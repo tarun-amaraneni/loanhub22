@@ -197,6 +197,44 @@ path(
 
   path("loan-transactions/<int:loan_id>/", loan_transactions_view, name="loan_transactions"),
   
+
+
+
+  path('api/active-loans/', active_loans_api, name='active_loans_api'),
+
+
+
+#   path("download/user/<str:gen_no>/", views.download_user_pdf, name="download_user_pdf"),
+path("download/loan/<int:loan_id>/", views.download_loan_pdf, name="download_loan_pdf"),
+
+
+# Full report (default)
+path(
+    "download-user-pdf/<str:gen_no>/",
+    views.download_user_pdf,
+    name="download_user_pdf"
+),
+
+# Filtered reports
+path(
+    "download-user-pdf/<str:gen_no>/<str:report_type>/",
+    views.download_user_pdf,
+    name="download_user_pdf"
+),
+
+
+
+
+# 17 feb 2026
+# -------------------------------
+    # Loan Repayments (PER LOAN)
+    # IMPORTANT: uses loan_id
+    # -------------------------------
+    path(
+        'loans/<int:loan_id>/repayments/',
+        views.loan_repayment_list,
+        name='loan_repayment_list'
+    ),
 ]
 
 

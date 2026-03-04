@@ -21,39 +21,32 @@ def safe_decimal(val, default=Decimal('0.00')):
 # ----------------------------
 @transaction.atomic
 def process_loan_repayment(loan):
-    import sys
-    sys.stdout.reconfigure(line_buffering=True)
-    print(f"🔥 Recalculating Loan {loan.id} | Amount: {loan.amount}", flush=True)
-
-    # -------------------------------
-    # Fetch dynamic interest rate from DB
-    # -------------------------------
+    """
+    Recalculate interest and principal allocation from scratch.
+    """
+    # Fetch rate
     try:
         rate_obj = InterestRate.objects.get(Type_of_Receipt=loan.type_of_loan)
-        ANNUAL_RATE = safe_decimal(rate_obj.interest) / 100  # convert percent to decimal
+        ANNUAL_RATE = safe_decimal(rate_obj.interest) / Decimal('100')
     except InterestRate.DoesNotExist:
-        ANNUAL_RATE = Decimal('0.15')  # fallback if not found
-        logger.warning(f"No interest rate found for {loan.type_of_loan}, using default 15%")
+        ANNUAL_RATE = Decimal('0.15')
 
-    print(f"Using interest rate: {ANNUAL_RATE}", flush=True)
+    # Reset principal & interest
+    principal = safe_decimal(loan.amount)
+    interest_due = Decimal('0.00')  # <-- RESET here to avoid double counting
+    last_date = loan.created_at.date()
 
     repayments = loan.loanrepayment_set.all().order_by('created_at')
-
-    principal = safe_decimal(loan.amount)
-    interest_due = safe_decimal(loan.interest)
-    last_date = loan.created_at.date()
 
     for rep in repayments:
         rep_date = rep.created_at.date()
         days = (rep_date - last_date).days
-
         if days > 0 and principal > 0:
-            interest_due += (
-                principal * ANNUAL_RATE * Decimal(days) / DAYS_IN_YEAR
-            ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            interest_due += (principal * ANNUAL_RATE * Decimal(days) / DAYS_IN_YEAR).quantize(
+                Decimal('0.01'), rounding=ROUND_HALF_UP
+            )
 
         payment = safe_decimal(rep.total_payment)
-
         paid_interest = min(payment, interest_due)
         payment -= paid_interest
         interest_due -= paid_interest
@@ -61,8 +54,8 @@ def process_loan_repayment(loan):
         paid_principal = min(payment, principal)
         principal -= paid_principal
 
-        rep.paid_to_interest = paid_interest
-        rep.paid_to_principal = paid_principal
+        rep.paid_to_interest = paid_interest.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        rep.paid_to_principal = paid_principal.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         rep.save(update_fields=['paid_to_interest', 'paid_to_principal'])
 
         last_date = rep_date
@@ -71,18 +64,14 @@ def process_loan_repayment(loan):
     today = timezone.now().date()
     days = (today - last_date).days
     if days > 0 and principal > 0:
-        interest_due += (
-            principal * ANNUAL_RATE * Decimal(days) / DAYS_IN_YEAR
-        ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        interest_due += (principal * ANNUAL_RATE * Decimal(days) / DAYS_IN_YEAR).quantize(
+            Decimal('0.01'), rounding=ROUND_HALF_UP
+        )
 
-    # -------------------------------
-    # Update loan
-    # -------------------------------
-    loan.balance = principal
-    loan.interest = interest_due
-
+    # Update loan DB
+    loan.balance = principal.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    loan.interest = interest_due.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
     if principal <= 0 and interest_due <= 0:
         loan.loan_status = 'Closed'
-
     loan.save()
     print("✅ DONE | Balance:", principal, "Interest:", interest_due, flush=True)
