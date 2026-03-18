@@ -454,7 +454,7 @@ class CashEntry(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     type_of_cash = models.CharField(max_length=20, choices=TYPE_CHOICES)
     remarks = models.CharField(max_length=255, blank=True, null=True)
-    datetime = models.DateTimeField(default=timezone.now, editable=False)
+    datetime = models.DateTimeField(default=timezone.now)
     code = models.CharField(max_length=6, unique=True, blank=True)
 
     # NEW FIELD

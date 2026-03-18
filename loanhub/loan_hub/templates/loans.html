@@ -339,13 +339,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     <tr>
                         
                         <th style="color: yellow;" >Loan Type</th>
-                        <th style="color: yellow;" >Amount</th>
+                        <th style="color: yellow;">Ref</th>  <!-- ✅ NEW -->
                         <th style="color: yellow;" >Cash</th>
                        
                         <th style="color: yellow;" >Bank1</th>
                         <th style="color: yellow;" >Bank2</th>
                         <th style="color: yellow;" >Adj</th>
-                        
+                        <th style="color: yellow;" >Amount</th>
                         
                         <th style="color: yellow;">Date</th>
 
@@ -357,19 +357,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     <td>
         <select name="Loan Type" class="editable">
             <option value="">Select Loan Type</option>
-            <option value="MTL LOAN">MTL LOAN</option>
-            <option value="FDL LOAN">FDL LOAN</option>
-            <option value="KVP/NSC LOAN">KVP/NSC LOAN</option>
+            <option value="MTL LOAN">MTL LOAN Issue</option>
+            <option value="FDL LOAN">FDL LOAN Issue</option>
+            <option value="KVP/NSC LOAN">KVP/NSC Issue</option>
         </select>
     </td>
-    
+        <!-- ✅ NEW REF INPUT -->
+    <td>
+        <input type="text" class="editable" name="ref" placeholder="Loan Ref(optional)">
+    </td>
 
-    <td><input type="text" class="editable" name="Amount" placeholder="Amount"></td>
+    
     <td><input type="text" class="editable" name="Cash" placeholder="Cash"></td>
     <td><input type="text" class="editable" name="Bank1" placeholder="Bank1"></td>
     <td><input type="text" class="editable" name="Bank2" placeholder="Bank2"></td>
     <td><input type="text" class="editable" name="Adj" placeholder="Adj"></td>
-
+<td><input type="text" class="editable" name="Amount" placeholder="Amount" readonly></td>
     <td>
         <input type="date"
                class="editable"
@@ -397,6 +400,21 @@ function getTodayDate() {
 }
 
 $(document).ready(function() {
+    // ====================== AUTO CALCULATE PAYMENT AMOUNT ======================
+
+function calculateAmount() {
+    const cash = parseFloat($('input[name="Cash"]').val()) || 0;
+    const bank1 = parseFloat($('input[name="Bank1"]').val()) || 0;
+    const bank2 = parseFloat($('input[name="Bank2"]').val()) || 0;
+    const adj = parseFloat($('input[name="Adj"]').val()) || 0;
+
+    const total = cash + bank1 + bank2 + adj;
+
+    $('input[name="Amount"]').val(total.toFixed(2));
+}
+
+// Trigger calculation when user types
+$('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj"]').on('input', calculateAmount);
     
     const $input = $('#gen_no_input');
     const $dropdown = $('#code_suggestions');

@@ -740,7 +740,7 @@ def interest_rate_view(request):
     }
     return render(request, 'interestrate.html',context)
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+from .forms import IntrestForm
 def Update_intrest_rate(request):
     if request.method == 'POST':
         form = IntrestForm(request.POST)
@@ -1088,6 +1088,9 @@ def loan_transactions_detail(request, loan_id, month):
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 from datetime import datetime
+from datetime import datetime
+from django.http import JsonResponse
+from django.db import IntegrityError
 
 def submit_new_table(request):
     if request.method == 'POST':
@@ -1099,7 +1102,9 @@ def submit_new_table(request):
         bank1 = request.POST.get('Bank1')
         bank2 = request.POST.get('Bank2')
         adj = request.POST.get('Adj')
-        loan_date_str = request.POST.get('date')   # 🔥 FIX HERE
+        loan_date_str = request.POST.get('date')
+
+        ref = request.POST.get('ref')  # ✅ NEW
 
         if not gen_no or not loan_type or not amount:
             return JsonResponse({'status': 'error', 'message': 'Required fields are missing.'}, status=400)
@@ -1125,23 +1130,36 @@ def submit_new_table(request):
         if form.is_valid():
             loan = form.save(commit=False)
 
-            # ---------------- FIX DATE HANDLING ----------------
+            # ================= 🔥 CORE LOGIC =================
+            if ref and ref.strip():
+                loan.code = ref.strip()
+            else:
+                loan.code = None   # 🔥 IMPORTANT
+            # else → DO NOTHING (your model auto-generates)
+            # ===============================================
+
+            # DATE FIX
             if loan_date_str:
                 try:
                     loan.created_at = datetime.strptime(loan_date_str, "%Y-%m-%d")
                 except ValueError:
                     pass
-            # --------------------------------------------------
 
             loan.interest = 0
-            loan.save()
+
+            try:
+                loan.save()
+            except IntegrityError:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Reference already exists. Please use a different Ref.'
+                })
 
             send_loan_email(user.Email)
 
             return JsonResponse({'status': 'success', 'message': 'Loan added successfully!'}, status=200)
 
         return JsonResponse({'status': 'error', 'message': 'Form validation failed.'}, status=400)
-
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
 def search_user_codes(request):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -1746,39 +1764,46 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .models import CashEntry
 import random
+from datetime import datetime
+from decimal import Decimal
+import random
 
 def cash_entry_view(request):
     if request.method == "POST":
         amount = request.POST.get("amount")
         type_of_cash = request.POST.get("type_of_cash")
         remarks = request.POST.get("remarks", "")
+        transfer_date = request.POST.get("transfer_date")
 
         if amount and type_of_cash:
-            # Auto-generate unique code starting with CA
+
+            if transfer_date:
+                dt = datetime.strptime(transfer_date, "%Y-%m-%d")
+            else:
+                dt = datetime.now()
+
             while True:
                 code = f"CA{random.randint(1000,9999)}"
                 if not CashEntry.objects.filter(code=code).exists():
                     break
 
-            # Create CashEntry with type_of_loan = "AddCash"
             CashEntry.objects.create(
-                amount=amount,
+                amount=Decimal(amount),
                 type_of_cash=type_of_cash,
                 remarks=remarks,
                 code=code,
-                type_of_loan="AddCash"  # <-- automatically set
+                datetime=dt,
+                type_of_loan="AddCash"
             )
 
             messages.success(request, f"Amount added successfully! Code: {code}")
-            return redirect("cash_entry")  # your URL name
+            return redirect("cash_entry")
 
         else:
             messages.error(request, "Please fill all required fields.")
 
     cash_entries = CashEntry.objects.all().order_by("-datetime")
     return render(request, "add_cash.html", {"cash_entries": cash_entries})
-
-
 # today
 
 from decimal import Decimal
@@ -2156,7 +2181,7 @@ def reports_list_view(request):
         filtered = [p for p in payments if get_loan_type(p) == report_type]
 
         for p in filtered:
-            adj = safe_decimal(getattr(p, "adjustment", 0))
+            adj = safe_decimal(getattr(p, "adj", 0))
 
             if hasattr(p, "loan") and p.loan:
                 ln = p.loan
@@ -2177,10 +2202,10 @@ def reports_list_view(request):
                     'gen_no': getattr(p, "gen_no", "-"),
                     'name': getattr(p, "name", "-"),
                     'ref': getattr(p, "code", "-"),
-                    'cash': safe_decimal(getattr(p, "amount", 0)),
-                    'bank1': Decimal('0'),
-                    'bank2': Decimal('0'),
-                    'adjustment': Decimal('0'),
+                    'cash': safe_decimal(getattr(p, "cash", 0)),
+                    'bank1': safe_decimal(getattr(p, "bank1", 0)),
+                    'bank2': safe_decimal(getattr(p, "bank2", 0)),
+                    'adjustment': adj,
                     'created_at': fmt(getattr(p, "created_at", None)),
                 })
 
@@ -2192,7 +2217,7 @@ def reports_list_view(request):
         filtered = [r for r in receipts if get_loan_type(r) == report_type]
 
         for r in filtered:
-            adj = safe_decimal(getattr(r, "adjustment", 0))
+            adj = safe_decimal(getattr(r, "adj", 0))
 
             if hasattr(r, "loan") and r.loan:
                 ln = r.loan
@@ -2213,10 +2238,10 @@ def reports_list_view(request):
                     'gen_no': getattr(r, "gen_no", "-"),
                     'name': getattr(r, "name", "-"),
                     'ref': getattr(r, "code", "-"),
-                    'cash': safe_decimal(getattr(r, "amount", 0)),
-                    'bank1': Decimal('0'),
-                    'bank2': Decimal('0'),
-                    'adjustment': Decimal('0'),
+                    'cash': safe_decimal(getattr(r, "cash", 0)),
+                    'bank1': safe_decimal(getattr(r, "bank1", 0)),
+                    'bank2': safe_decimal(getattr(r, "bank2", 0)),
+                    'adjustment': adj,
                     'created_at': fmt(getattr(r, "created_at", None)),
                 })
 
@@ -2668,14 +2693,15 @@ def cash_withdrawals(request):
     return render(request, 'cash_withdrawals.html', {
         'withdrawals': withdrawals
     })
-
 from decimal import Decimal
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.contrib import messages
 from django.db.models import Max
 import re
+from datetime import datetime
 from .models import CashEntry
+
 
 def cash_transfer(request):
     if request.method == "POST":
@@ -2683,6 +2709,14 @@ def cash_transfer(request):
         from_acc = request.POST.get("from_account")
         to_acc = request.POST.get("to_account")
         amount = Decimal(request.POST.get("amount"))
+
+        # ✅ get selected date
+        transfer_date = request.POST.get("transfer_date")
+
+        if transfer_date:
+            transfer_datetime = datetime.strptime(transfer_date, "%Y-%m-%d")
+        else:
+            transfer_datetime = timezone.now()
 
         if from_acc == to_acc:
             messages.error(request, "From and To cannot be same")
@@ -2708,8 +2742,8 @@ def cash_transfer(request):
             type_of_cash=from_acc,
             amount=-amount,
             remarks="Transfer",
-            datetime=timezone.now(),
-            type_of_loan="Transfer"  # <-- set type_of_loan
+            datetime=transfer_datetime,   # ✅ saved selected date
+            type_of_loan="Transfer"
         )
 
         # ---- TO ACCOUNT (POSITIVE) ----
@@ -2718,14 +2752,13 @@ def cash_transfer(request):
             type_of_cash=to_acc,
             amount=amount,
             remarks="Transfer",
-            datetime=timezone.now(),
-            type_of_loan="Transfer"  # <-- set type_of_loan
+            datetime=transfer_datetime,   # ✅ saved selected date
+            type_of_loan="Transfer"
         )
 
         messages.success(request, f"Transfer completed ({base_code})")
 
     return redirect("cash_withdrawals")
-
 # from django.http import JsonResponse
 # from decimal import Decimal
 # from .models import OtherCashTransaction
@@ -4634,7 +4667,6 @@ from .models import Loan, LoanRepayment
 def loan_transactions_view(request, loan_id):
 
     loan = get_object_or_404(Loan, id=loan_id)
-
     loan_type = loan.type_of_loan
 
     # Get only repayments of this loan
@@ -4656,7 +4688,6 @@ def loan_transactions_view(request, loan_id):
         receipts = list(repayments)
 
     # ---------------- FORMAT PAYMENTS ----------------
-
     payment_data = []
 
     for p in payments:
@@ -4667,10 +4698,10 @@ def loan_transactions_view(request, loan_id):
                 "interest": safe_decimal(p.interest),
                 "total": safe_decimal(p.amount),
                 "payment_mode": "-",
-                "cash": safe_decimal(p.amount),
-                "bank1": 0,
-                "bank2": 0,
-                "adjustment": 0,
+                "cash": safe_decimal(p.cash),
+                "bank1": safe_decimal(p.bank1),
+                "bank2": safe_decimal(p.bank2),
+                "adjustment": safe_decimal(getattr(p, "adj", 0)),
                 "remarks": "-",
                 "created_at": fmt(p.created_at)
             })
@@ -4684,13 +4715,12 @@ def loan_transactions_view(request, loan_id):
                 "cash": safe_decimal(p.cash),
                 "bank1": safe_decimal(p.bank1),
                 "bank2": safe_decimal(p.bank2),
-                "adjustment": safe_decimal(getattr(p, "adjustment", 0)),
+                "adjustment": safe_decimal(getattr(p, "adj", 0)),  # ✅ correct
                 "remarks": p.remarks,
                 "created_at": fmt(p.created_at)
             })
 
     # ---------------- FORMAT RECEIPTS ----------------
-
     receipt_data = []
 
     for r in receipts:
@@ -4703,9 +4733,9 @@ def loan_transactions_view(request, loan_id):
                 "paid_to_interest": safe_decimal(r.interest),
                 "paid_to_principal": safe_decimal(r.amount),
                 "payment_mode": "-",
-                "cash": safe_decimal(r.amount),
-                "bank1": 0,
-                "bank2": 0,
+                "cash": safe_decimal(r.cash),
+                "bank1": safe_decimal(r.bank1),
+                "bank2": safe_decimal(r.bank2),
                 "adjustment": 0,
                 "remarks": "-",
                 "created_at": fmt(r.created_at)
@@ -4722,7 +4752,7 @@ def loan_transactions_view(request, loan_id):
                 "cash": safe_decimal(r.cash),
                 "bank1": safe_decimal(r.bank1),
                 "bank2": safe_decimal(r.bank2),
-                "adjustment": safe_decimal(getattr(r, "adjustment", 0)),
+                "adjustment": safe_decimal(getattr(r, "adj", 0)),  # ✅ FIXED
                 "remarks": r.remarks,
                 "created_at": fmt(r.created_at)
             })

@@ -165,12 +165,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <table class="styled-table">
                 <thead>
                     <tr>
-                        <th style="color: yellow;">Loan Type</th>
-                        <th style="color: yellow;">Amount</th>
+                        <th style="color: yellow;">Deposit Type</th>
+                        <th style="color: yellow;">Ref</th>
+                        
                         <th style="color: yellow;">Cash</th>
                         <th style="color: yellow;">Bank1</th>
                         <th style="color: yellow;">Bank2</th>
                         <th style="color: yellow;">Adj</th>
+                        <th style="color: yellow;">Amount</th>
                         <th style="width:140px">Date</th>
                         <th>Actions</th>
                     </tr>
@@ -180,16 +182,20 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <td>
                             <select name="Loan Type" class="editable">
                                 <option value="">Select Loan Type</option>
-                                <option value="FIXED DEPOSITS">FIXED DEPOSITS</option>
-                                <option value="THRIFT FUNDS">THRIFT FUNDS</option>
-                                <option value="WELFARE COLLECTIONS">WELFARE COLLECTIONS</option>
+                                <option value="FIXED DEPOSITS">FIXED DEPOSITS Collection</option>
+                                <option value="THRIFT FUNDS">THRIFT FUNDS Collection</option>
+                                <option value="WELFARE COLLECTIONS">WELFARE COLLECTIONS Collection</option>
                             </select>
                         </td>
-                        <td><input type="text" class="editable" name="Amount" placeholder="Amount"></td>
+                            <td>
+        <input type="text" class="editable" name="ref" placeholder="Loan Ref(optional)">
+    </td>
+                        
                         <td><input type="text" class="editable" name="Cash" placeholder="Cash"></td>
                         <td><input type="text" class="editable" name="Bank1" placeholder="Bank1"></td>
                         <td><input type="text" class="editable" name="Bank2" placeholder="Bank2"></td>
                         <td><input type="text" class="editable" name="Adj" placeholder="Adj"></td>
+                        <td><input type="text" class="editable" name="Amount" placeholder="Amount" readonly></td>
                         <td><input type="date" class="editable payment-date" name="date"></td>
                         <td><button type="submit" class="submit-btn">Submit</button></td>
                     </tr>
@@ -303,7 +309,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                 }
             });
         }
+// ---------- AUTO CALCULATE AMOUNT ----------
+function calculateDepositAmount() {
 
+    const cash  = parseFloat($('input[name="Cash"]').val()) || 0;
+    const bank1 = parseFloat($('input[name="Bank1"]').val()) || 0;
+    const bank2 = parseFloat($('input[name="Bank2"]').val()) || 0;
+    const adj   = parseFloat($('input[name="Adj"]').val()) || 0;
+
+    const total = cash + bank1 + bank2 + adj;
+
+    $('input[name="Amount"]').val(total.toFixed(2));
+}
+
+// Run calculation when user types
+$('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj"]').on('input', function(){
+    calculateDepositAmount();
+});
         // Show all users on focus
         $depositInput.on('focus', function() { fetchUsers(''); });
         // Filter while typing
@@ -422,7 +444,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             const loader = showLoader();
             fetch('{% url "submit_new_table" %}', {method:'POST', body:formData, headers:{'X-CSRFToken':'{{ csrf_token }}'}})
             .then(res=>res.json())
-            .then(data=>{ hideLoader(loader); if(data.status==='success'){showAlert('Loan added successfully!','success'); setTimeout(()=>window.location.reload(),2000);} else{showAlert('Error: '+data.message,'danger');} })
+            .then(data=>{ hideLoader(loader); if(data.status==='success'){showAlert('Deposit added successfully!','success'); setTimeout(()=>window.location.reload(),2000);} else{showAlert('Error: '+data.message,'danger');} })
             .catch(err=>{ hideLoader(loader); showAlert('An error occurred.', 'danger'); console.error(err); });
         });
 

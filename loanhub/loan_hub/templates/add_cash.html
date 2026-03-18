@@ -251,6 +251,10 @@ table tr:nth-child(even) {
             <input type="text" id="remarks" name="remarks" placeholder="Enter remarks">
         </div>
         <div class="form-group">
+    <label for="transfer_date">Date</label>
+    <input type="date" id="transfer_date" name="transfer_date" value="{% now 'Y-m-d' %}">
+</div>
+        <div class="form-group">
             <label style="visibility:hidden;">Submit</label>
             <button type="submit" class="submit-btn">➕ Add Amount</button>
         </div>

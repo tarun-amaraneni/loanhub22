@@ -275,10 +275,11 @@ a.view-btn {
                 <tr>
                     <th >Issue Date</th> <!-- new column -->
                     <th style="color: yellow;">Receipt Type</th>
-                    <th style="color: yellow;">Amount</th>
+                    
                     <th style="color: yellow;">Cash</th>
                     <th style="color: yellow;">Bank1</th>
                     <th style="color: yellow;">Bank2</th>
+                    <th style="color: yellow;">Amount</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -292,10 +293,11 @@ a.view-btn {
                             <option value="OTHER RECEIPTS">Other Receipts</option>
                         </select>
                     </td>
-                    <td><input type="text" name="amount" class="editable" placeholder="Amount"></td>
+                    
                     <td><input type="text" name="cash" class="editable" placeholder="Cash"></td>
                     <td><input type="text" name="bank1" class="editable" placeholder="Bank1"></td>
                     <td><input type="text" name="bank2" class="editable" placeholder="Bank2"></td>
+                    <td><input type="text" name="amount" class="editable" placeholder="Amount" readonly> </td>
                     <td><button type="button" class="save-btn" id="addReceipt">Submit</button></td>
                 </tr>
             </tbody>
@@ -314,11 +316,12 @@ a.view-btn {
                 <thead>
     <tr>
         <th >Issue Date</th> <!-- new column -->
-        <th style="color: yellow;">Loan Type</th>
-        <th style="color: yellow;">Amount</th>
+        <th style="color: yellow;">Payment Type</th>
+        
         <th style="color: yellow;">Cash</th>
         <th style="color: yellow;">Bank1</th>
         <th style="color: yellow;">Bank2</th>
+        <th style="color: yellow;">Amount</th>
         <th>Actions</th>
     </tr>
 </thead>
@@ -333,10 +336,11 @@ a.view-btn {
                 <option value="OTHER PAYMENTS">Other Payments</option>
             </select>
         </td>
-        <td><input type="text" name="amount" class="editable" placeholder="Amount"></td>
+        
         <td><input type="text" name="cash" class="editable" placeholder="Cash"></td>
         <td><input type="text" name="bank1" class="editable" placeholder="Bank1"></td>
         <td><input type="text" name="bank2" class="editable" placeholder="Bank2"></td>
+        <td><input type="text" name="amount" class="editable" placeholder="Amount" readonly></td>
         <td><button type="button" class="save-btn" id="addPayment">Submit</button></td>
     </tr>
 </tbody>
@@ -387,7 +391,27 @@ a.view-btn {
 
 <script>
 $(document).ready(function () {
+// -------- AUTO CALCULATE AMOUNT --------
+function calculateAmount(row) {
+    let cash  = parseFloat(row.find('input[name="cash"]').val()) || 0;
+    let bank1 = parseFloat(row.find('input[name="bank1"]').val()) || 0;
+    let bank2 = parseFloat(row.find('input[name="bank2"]').val()) || 0;
 
+    let total = cash + bank1 + bank2;
+    row.find('input[name="amount"]').val(total.toFixed(2));
+}
+
+// Receipts table calculation
+$('#receiptForm input[name="cash"], #receiptForm input[name="bank1"], #receiptForm input[name="bank2"]').on('input', function () {
+    let row = $(this).closest('tr');
+    calculateAmount(row);
+});
+
+// Payments table calculation
+$('#paymentForm input[name="cash"], #paymentForm input[name="bank1"], #paymentForm input[name="bank2"]').on('input', function () {
+    let row = $(this).closest('tr');
+    calculateAmount(row);
+});
 
     // ---------- DEFAULT DATE = TODAY ----------
 const today = new Date().toISOString().split('T')[0];

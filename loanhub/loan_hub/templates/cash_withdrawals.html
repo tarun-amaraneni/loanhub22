@@ -121,7 +121,13 @@
                    style="padding:8px 12px; width:180px; border-radius:5px; border:1px solid #ccc;"
                    required>
         </div>
-
+        <!-- DATE -->
+<div>
+    <label style="font-weight:500;">Date</label><br>
+    <input type="date" name="transfer_date" id="transfer_date"
+           style="padding:8px 12px; width:180px; border-radius:5px; border:1px solid #ccc;"
+           required>
+</div>
         <!-- BUTTON -->
         <div>
             <button type="submit"
@@ -161,6 +167,12 @@ function updateToDropdown() {
         }
     });
 }
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let today = new Date().toISOString().split('T')[0];
+    document.getElementById("transfer_date").value = today;
+});
 </script>
 
 {% endblock %}
