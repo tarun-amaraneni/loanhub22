@@ -108,6 +108,14 @@
             </h3>
         </div>
 
+        <!-- Opening Balance -->
+<div class="cw-card">
+    <h5>Opening Balance</h5>
+    <h3 style="color:#6a1b9a;">
+        ₹ {{ withdrawals.opening_balance|default:"0.00"|floatformat:2 }}
+    </h3>
+</div>
+
     </div>
 </div>
 
@@ -199,15 +207,15 @@ function calculateSummary() {
         let table = document.getElementById(tableId);
         let rows = table.querySelectorAll('tbody tr');
         let total = 0;
+
         rows.forEach(row => {
             if (row.style.display !== 'none') {
-                let cash = parseFloat(row.cells[3].innerText.replace(/,/g,'')) || 0;
-                let bank1 = parseFloat(row.cells[4].innerText.replace(/,/g,'')) || 0;
-                let bank2 = parseFloat(row.cells[5].innerText.replace(/,/g,'')) || 0;
-                let adj = parseFloat(row.cells[6].innerText.replace(/,/g,'')) || 0;
-                total += cash + bank1 + bank2 + adj;
+
+let amount = parseFloat(row.cells[10]?.innerText.replace(/[₹,]/g,'')) || 0;
+total += amount;
             }
         });
+
         return total;
     }
 
@@ -221,7 +229,20 @@ function calculateSummary() {
 }
 
 // Run initially
-document.addEventListener('DOMContentLoaded', calculateSummary);
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Step 1: calculate row totals first
+    calculateRowAmounts("receipts-table");
+    calculateRowAmounts("payments-table");
+
+    // Step 2: calculate footer totals
+    calculateFooterAmountTotal("receipts-table","receipts-total-amount");
+    calculateFooterAmountTotal("payments-table","payments-total-amount");
+
+    // Step 3: calculate summary AFTER everything
+    calculateSummary();
+
+});
 
 // Also recalculate if you apply date filters
 function recalcSummaryAfterFilter() {
@@ -279,6 +300,7 @@ function recalcSummaryAfterFilter() {
                     <th>Bank 1</th>
                     <th>Bank 2</th>
                     <th>Adjustment</th>
+                    <th>Opening Balance</th>
                     <th>Amount</th>
 
                 </tr>
@@ -336,7 +358,9 @@ function recalcSummaryAfterFilter() {
             <td>{{ transaction.bank1|default:"0.00"|floatformat:2 }}</td>
             <td>{{ transaction.bank2|default:"0.00"|floatformat:2 }}</td>
             <td>{{ transaction.adj|default:"0.00"|floatformat:2 }}</td>
+            <td>{{ transaction.opening_balance|default:"0.00"|floatformat:2 }}</td>
 <td class="amount-cell"></td>
+
 
         </tr>
     {% endfor %}
@@ -382,6 +406,9 @@ function recalcSummaryAfterFilter() {
             {{ transactions_totals.total_adj|default:"0.00"|floatformat:2 }}
         </td>
 
+        <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+    {{ transactions_totals.total_opening_balance|default:"0.00"|floatformat:2 }}
+</td>
             <!-- NEW AMOUNT TOTAL -->
     <td id="receipts-total-amount"
         style="color:white;font-weight:bold;font-size:20px;text-align:right;">
@@ -441,6 +468,7 @@ function recalcSummaryAfterFilter() {
                 <th>Bank 1</th>
                 <th>Bank 2</th>
                 <th>Adjustment</th>
+                <th>Opening Balance</th>
                 <th>Amount</th>
 
             </tr>
@@ -484,7 +512,9 @@ function recalcSummaryAfterFilter() {
     <td>{{ payment.bank1|default:"0.00"|floatformat:2 }}</td>
     <td>{{ payment.bank2|default:"0.00"|floatformat:2 }}</td>
     <td>{{ payment.adj|default:"0.00"|floatformat:2 }}</td>
+    <td>{{ payment.opening_balance|default:"0.00"|floatformat:2 }}</td>
 <td class="amount-cell"></td>
+
 
 </tr>
 {% endfor %}
@@ -528,6 +558,11 @@ function recalcSummaryAfterFilter() {
     <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
         {{ payments_totals.total_adj|default:"0.00"|floatformat:2 }}
     </td>
+
+
+    <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+    {{ payments_totals.total_opening_balance|default:"0.00"|floatformat:2 }}
+</td>
 
         <!-- NEW AMOUNT TOTAL -->
     <td id="payments-total-amount"
@@ -634,8 +669,17 @@ function recalcSummaryAfterFilter() {
         });
 
         // 👇 VERY IMPORTANT
-        addFilteredTotalRow(tableId);
-        calculateSummary();  // update summary table also
+        
+        calculateSummary();
+
+if(tableId === "receipts-table"){
+    calculateFooterAmountTotal("receipts-table","receipts-total-amount");
+}
+if(tableId === "payments-table"){
+    calculateFooterAmountTotal("payments-table","payments-total-amount");
+}
+
+addFilteredTotalRow(tableId);
     }
 
        receiptStartDate.addEventListener('change', () =>
@@ -653,7 +697,7 @@ paymentStartDate.addEventListener('change', () =>
 paymentEndDate.addEventListener('change', () =>
     filterTable('payments-table', 'payment-start-date', 'payment-end-date')
 );
-        addFilteredTotalRow(tableId);
+        
     });
 
 
@@ -681,23 +725,28 @@ function calculateRowAmounts(tableId){
     const rows=document.querySelectorAll(`#${tableId} tbody tr`);
 
     rows.forEach(row=>{
-        const cash=parseFloat(row.cells[5]?.innerText)||0;
-        const bank1=parseFloat(row.cells[6]?.innerText)||0;
-        const bank2=parseFloat(row.cells[7]?.innerText)||0;
-        const adj=parseFloat(row.cells[8]?.innerText)||0;
+const cash  = parseFloat(row.cells[5]?.innerText)||0;
+const bank1 = parseFloat(row.cells[6]?.innerText)||0;
+const bank2 = parseFloat(row.cells[7]?.innerText)||0;
+const adj   = parseFloat(row.cells[8]?.innerText)||0;
+const opening = parseFloat(
+    (row.cells[9]?.innerText || "0")
+        .replace(/[₹,\s]/g,'')
+) || 0;
 
-        const total=cash+bank1+bank2+adj;
+const total = cash + bank1 + bank2 + adj + opening;
 
-        row.cells[5].innerText = formatIndianNumber(cash);
-        row.cells[6].innerText = formatIndianNumber(bank1);
-        row.cells[7].innerText = formatIndianNumber(bank2);
-        row.cells[8].innerText = formatIndianNumber(adj);
+// format
+row.cells[5].innerText = formatIndianNumber(cash);
+row.cells[6].innerText = formatIndianNumber(bank1);
+row.cells[7].innerText = formatIndianNumber(bank2);
+row.cells[8].innerText = formatIndianNumber(adj);
+row.cells[9].innerText = formatIndianNumber(opening);
 
-        if(row.cells[9]){
-            row.cells[9].innerText="₹ "+formatIndianNumber(total);
-            row.cells[9].style.fontWeight="600";
-            row.cells[9].style.textAlign="right";
-        }
+// amount column moved to index 10
+if(row.cells[10]){
+    row.cells[10].innerText="₹ "+formatIndianNumber(total);
+}
     });
 }
 
@@ -715,7 +764,7 @@ function calculateFooterAmountTotal(tableId, footerId){
 
     rows.forEach(row=>{
         if(row.style.display !== 'none'){
-            const amountText = row.cells[9]?.innerText.replace(/[₹,]/g,'') || "0";
+            const amountText = row.cells[10]?.innerText.replace(/[₹,]/g,'') || "0";
             total += parseFloat(amountText) || 0;
         }
     });
@@ -777,7 +826,6 @@ function addFilteredTotalRow(tableId){
 
     if(!table || !tbody || !tfoot) return;
 
-    // Remove existing filtered row if already present
     const oldRow = tfoot.querySelector(".filtered-total-row");
     if(oldRow) oldRow.remove();
 
@@ -785,6 +833,7 @@ function addFilteredTotalRow(tableId){
     let totalBank1 = 0;
     let totalBank2 = 0;
     let totalAdj = 0;
+    let totalOpening = 0;   // ✅ FIX
     let totalAmount = 0;
 
     const rows = tbody.querySelectorAll("tr");
@@ -796,12 +845,17 @@ function addFilteredTotalRow(tableId){
             const bank1 = parseFloat(row.cells[6]?.innerText.replace(/,/g,'')) || 0;
             const bank2 = parseFloat(row.cells[7]?.innerText.replace(/,/g,'')) || 0;
             const adj   = parseFloat(row.cells[8]?.innerText.replace(/,/g,'')) || 0;
-            const amt   = parseFloat(row.cells[9]?.innerText.replace(/[₹,]/g,'')) || 0;
+const opening = parseFloat(
+    (row.cells[9]?.innerText || "0")
+        .replace(/[₹,\s]/g,'')
+) || 0;
+            const amt = parseFloat(row.cells[10]?.innerText.replace(/[₹,]/g,'')) || 0;
 
             totalCash += cash;
             totalBank1 += bank1;
             totalBank2 += bank2;
             totalAdj += adj;
+            totalOpening += opening;   // ✅ FIX
             totalAmount += amt;
         }
     });
@@ -819,15 +873,14 @@ function addFilteredTotalRow(tableId){
         <td style="text-align:right;">${formatIndianNumber(totalBank1)}</td>
         <td style="text-align:right;">${formatIndianNumber(totalBank2)}</td>
         <td style="text-align:right;">${formatIndianNumber(totalAdj)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalOpening)}</td> <!-- ✅ FIX -->
         <td style="text-align:right;">₹ ${formatIndianNumber(totalAmount)}</td>
     `;
 
-    tr.style.backgroundColor = "#fff59d"; // yellow
+    tr.style.backgroundColor = "#fff59d";
     tr.style.fontWeight = "600";
 
-    // Insert ABOVE the green total row
     tfoot.insertBefore(tr, tfoot.firstElementChild);
-    
 }
 </script>
 <style>
@@ -856,20 +909,17 @@ function addFilteredTotalRow(tableId){
 <style>
 .cw-cards-wrapper{
     display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    justify-content: flex-start;   /* left aligned like withdrawals page */
+    gap: 15px;
+    flex-wrap: nowrap;   /* ❌ prevent wrapping */
+    justify-content: space-between;
     align-items: stretch;
 }
 
 .cw-card{
-    border:1px solid #e0e0e0;
-    padding:20px;
-    width:220px;
-    border-radius:12px;
-    background:#fff;
-    box-shadow:0 6px 12px rgba(0,0,0,0.08);
-    transition: transform 0.2s, box-shadow 0.2s;
+    flex: 1;              /* ✅ auto fit equally */
+    min-width: 150px;     /* optional safety */
+    max-width: 200px;     /* control size */
+    padding: 15px;        /* slightly smaller */
 }
 
 .cw-card:hover{

@@ -196,6 +196,7 @@ body {
     <th>Bank 1</th>
     <th>Bank 2</th>
     <th>Adjustment</th>
+    <th>Opening Balance</th>
     <th>Actions</th>
 </tr>
 </thead>
@@ -210,9 +211,10 @@ body {
     <td>{{ r.bank1 }}</td>
     <td>{{ r.bank2 }}</td>
     <td>{{ r.adj }}</td>
+    <td>{{ r.opening_balance }}</td>
     <td>
         <button type="button" class="view-btn"
-            onclick="openEditModal('{{ r.code }}','{{ r.cash }}','{{ r.bank1 }}','{{ r.bank2 }}','{{ r.adj }}')">
+            onclick="openEditModal('{{ r.code }}','{{ r.cash }}','{{ r.bank1 }}','{{ r.bank2 }}','{{ r.adj }}','{{ r.opening_balance }}')">
             ✏️
         </button>
 
@@ -245,7 +247,7 @@ body {
             <label>Cash</label><input id="edit_cash">
             <label>Bank 1</label><input id="edit_bank1">
             <label>Bank 2</label><input id="edit_bank2">
-            <label>Adjustment</label><input id="edit_adj">
+            <label>Opening Balance</label><input id="edit_opening_balance">
             <div class="modal-actions">
                 <button type="button" onclick="closeEditModal()" class="view-btn">Cancel</button>
                 <button type="submit" id="saveBtn" class="save-btn">Save</button>
@@ -269,22 +271,21 @@ body {
 </div>
 
 <script>
-function openEditModal(code,c,b1,b2,a){
+function openEditModal(code, c, b1, b2, a, ob){
     document.getElementById("editModal").style.display='flex';
 
-    document.getElementById("edit_cash").value=c;
-    document.getElementById("edit_bank1").value=b1;
-    document.getElementById("edit_bank2").value=b2;
-    document.getElementById("edit_adj").value=a;
+    document.getElementById("edit_cash").value = c;
+    document.getElementById("edit_bank1").value = b1;
+    document.getElementById("edit_bank2").value = b2;
+    document.getElementById("edit_opening_balance").value = ob;  // ✅ IMPORTANT
 
-    document.getElementById("edit_cash").name='cash_'+code;
-    document.getElementById("edit_bank1").name='bank1_'+code;
-    document.getElementById("edit_bank2").name='bank2_'+code;
-    document.getElementById("edit_adj").name='adj_'+code;
+    document.getElementById("edit_cash").name = 'cash_' + code;
+    document.getElementById("edit_bank1").name = 'bank1_' + code;
+    document.getElementById("edit_bank2").name = 'bank2_' + code;
+    document.getElementById("edit_opening_balance").name = 'opening_balance_' + code;
 
-    document.getElementById("saveBtn").name='save_'+code;
+    document.getElementById("saveBtn").name = 'save_' + code;
 }
-
 function closeEditModal(){
     document.getElementById("editModal").style.display='none';
 }

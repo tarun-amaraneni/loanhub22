@@ -134,10 +134,13 @@ def loans_view(request):
                 bank1 = get_decimal('bank1')
                 bank2 = get_decimal('bank2')
                 adj   = get_decimal('adj')
-
-                total_payment = cash + bank1 + bank2 + adj
-                if total_payment <= 0:
-                    return JsonResponse({'status': 'error', 'message': 'Invalid payment'}, status=400)
+                opening_balance = get_decimal('opening_balance')  # ✅ NEW
+                total_payment = cash + bank1 + bank2 + adj + opening_balance
+                if all(x == 0 for x in [cash, bank1, bank2, adj, opening_balance]):
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Enter at least one value (Cash / Bank / Adj / Opening Balance)'
+                    }, status=400)
 
                 # Ensure DB balance/interest is updated before allocation
                 process_loan_repayment(loan)
@@ -158,7 +161,7 @@ def loans_view(request):
 
                 repayment = LoanRepayment.objects.create(
                     loan=loan,
-                    total_payment=cash + bank1 + bank2 + adj,
+                    total_payment=cash + bank1 + bank2 + adj + opening_balance,
                     paid_to_interest=paid_to_interest,
                     paid_to_principal=paid_to_principal,
                     payment_mode='mixed',
@@ -167,6 +170,7 @@ def loans_view(request):
                     bank1=bank1,
                     bank2=bank2,
                     adj=adj,
+                    opening_balance=opening_balance,
                     code=generate_unique_repayment_code(),
                     type_of_loan=loan.type_of_loan,
                     created_at=repayment_datetime
@@ -296,20 +300,22 @@ def deposits_view(request):
                 bank1 = get_decimal('bank1')
                 bank2 = get_decimal('bank2')
                 adj   = get_decimal('adj')
+                opening_balance = get_decimal('opening_balance')
 
-                total_payment = cash + bank1 + bank2 + adj
+                actual_payment = cash + bank1 + bank2 + adj
+                total_payment = actual_payment + opening_balance
+
                 if total_payment <= 0:
                     return JsonResponse({'status': 'error', 'message': 'Invalid payment'}, status=400)
 
-                # Ensure DB balance/interest is updated before allocation
                 process_loan_repayment(loan)
                 loan.refresh_from_db()
 
-                paid_to_interest = min(loan.interest, total_payment)
-                total_payment -= paid_to_interest
-                paid_to_principal = min(loan.balance, total_payment)
-                total_payment -= paid_to_principal
+                paid_to_interest = min(loan.interest, actual_payment)
+                actual_payment -= paid_to_interest
 
+                paid_to_principal = min(loan.balance, actual_payment)
+                actual_payment -= paid_to_principal
                 date_str = request.POST.get('date')
                 repayment_datetime = timezone.now()
                 if date_str:
@@ -320,7 +326,7 @@ def deposits_view(request):
 
                 repayment = LoanRepayment.objects.create(
                     loan=loan,
-                    total_payment=cash + bank1 + bank2 + adj,
+                    total_payment=cash + bank1 + bank2 + adj + opening_balance,
                     paid_to_interest=paid_to_interest,
                     paid_to_principal=paid_to_principal,
                     payment_mode='mixed',
@@ -329,6 +335,7 @@ def deposits_view(request):
                     bank1=bank1,
                     bank2=bank2,
                     adj=adj,
+                    opening_balance=opening_balance,  # ✅ ADD THIS
                     code=generate_unique_repayment_code(),
                     type_of_loan=loan.type_of_loan,
                     created_at=repayment_datetime
@@ -920,11 +927,29 @@ def cash_book(request):
 
 
     # ---------------- Totals ----------------
+# ---------------- Totals ----------------
+    def get_adj(obj):
+        return safe_decimal(obj.adj) if hasattr(obj, 'adj') else Decimal('0')
+
+    def get_total(obj):
+        return (
+            safe_decimal(getattr(obj, 'cash', 0)) +
+            safe_decimal(getattr(obj, 'bank1', 0)) +
+            safe_decimal(getattr(obj, 'bank2', 0)) +
+            get_adj(obj) +
+            safe_decimal(getattr(obj, 'opening_balance', 0))   # ✅ ADD THIS
+        )
+    
+
+    receipts_opening = sum(safe_decimal(getattr(t, 'opening_balance', 0)) for t in transactions)
+    payments_opening = sum(safe_decimal(getattr(p, 'opening_balance', 0)) for p in payments)
+
     transactions_totals = {
         'total_cash': sum(safe_decimal(getattr(t, 'cash', 0)) for t in transactions),
         'total_bank1': sum(safe_decimal(getattr(t, 'bank1', 0)) for t in transactions),
         'total_bank2': sum(safe_decimal(getattr(t, 'bank2', 0)) for t in transactions),
         'total_adj': sum(get_adj(t) for t in transactions),
+        'total_opening_balance': sum(safe_decimal(getattr(t, 'opening_balance', 0)) for t in transactions),
     }
 
     payments_totals = {
@@ -932,11 +957,13 @@ def cash_book(request):
         'total_bank1': sum(safe_decimal(getattr(p, 'bank1', 0)) for p in payments),
         'total_bank2': sum(safe_decimal(getattr(p, 'bank2', 0)) for p in payments),
         'total_adj': sum(get_adj(p) for p in payments),
-        'total_amount': sum(
-            safe_decimal(getattr(p, 'amount', 0))
-            for p in payments
-        )
+        'total_opening_balance': sum(safe_decimal(getattr(p, 'opening_balance', 0)) for p in payments),
+
+        # 🔥 FIXED TOTAL AMOUNT
+        'total_amount': sum(get_total(p) for p in payments)
     }
+
+    
 
     receipts_totals = {
         'cash': sum(safe_decimal(getattr(t, 'cash', 0)) for t in transactions),
@@ -957,6 +984,8 @@ def cash_book(request):
         'bank1': receipts_totals['bank1'] - payments_totals_cards['bank1'],
         'bank2': receipts_totals['bank2'] - payments_totals_cards['bank2'],
         'adj': receipts_totals['adj'] - payments_totals_cards['adj'],
+        'opening_balance': receipts_opening - payments_opening   # ✅ ADD THIS
+        
     }
 
     # ---------------- Final balances ----------------
@@ -964,10 +993,13 @@ def cash_book(request):
         transactions_totals['total_cash'] +
         transactions_totals['total_bank1'] +
         transactions_totals['total_bank2'] +
-        transactions_totals['total_adj']
+        transactions_totals['total_adj']+
+        transactions_totals['total_opening_balance']   # ✅ ADD
     )
 
+    # 🔥 USE FIXED TOTAL
     total_payments = payments_totals['total_amount']
+
     available_balance = total_receipts - total_payments
 
 
@@ -1091,37 +1123,100 @@ from datetime import datetime
 from datetime import datetime
 from django.http import JsonResponse
 from django.db import IntegrityError
+from decimal import Decimal, InvalidOperation
+from django.db import IntegrityError
+from datetime import datetime
+from django.http import JsonResponse
+
+ACCUMULATE_TYPES = ['THRIFT FUNDS', 'WELFARE COLLECTIONS']
+
 
 def submit_new_table(request):
     if request.method == 'POST':
-        gen_no = request.POST.get('gen_no')
-        loan_type = request.POST.get('Loan Type')
+
+        gen_no = request.POST.get('gen_no', '').strip()
+        loan_type = request.POST.get('Loan Type', '').strip()
         amount = request.POST.get('Amount')
         cash = request.POST.get('Cash')
         online = request.POST.get('Online')
         bank1 = request.POST.get('Bank1')
         bank2 = request.POST.get('Bank2')
         adj = request.POST.get('Adj')
+        opening_balance = request.POST.get('opening_balance')
         loan_date_str = request.POST.get('date')
-
-        ref = request.POST.get('ref')  # ✅ NEW
+        ref = request.POST.get('ref')
 
         if not gen_no or not loan_type or not amount:
             return JsonResponse({'status': 'error', 'message': 'Required fields are missing.'}, status=400)
 
         user = User.objects.filter(code=gen_no).first()
         if not user:
-            return JsonResponse({'status': 'error', 'message': 'User with this Gen.no does not exist.'}, status=404)
+            return JsonResponse({'status': 'error', 'message': 'User not found.'}, status=404)
 
+        # 🔧 helper
+        def to_decimal(val):
+            try:
+                return Decimal(str(val).strip())
+            except:
+                return Decimal("0")
+
+        amt   = to_decimal(amount)
+        cash  = to_decimal(cash)
+        bank1 = to_decimal(bank1)
+        bank2 = to_decimal(bank2)
+        adj   = to_decimal(adj)
+        opening_balance = to_decimal(opening_balance)  # ✅ NEW
+
+        total_amount = amt  # or cash+bank1+bank2+adj (based on your logic)
+
+        # =========================
+        # 🔥 ACCUMULATION LOGIC
+        # =========================
+        if loan_type.upper() in ACCUMULATE_TYPES:
+
+            existing_loan = Loan.objects.filter(
+                gen_no__iexact=gen_no,
+                type_of_loan__iexact=loan_type,
+                loan_status__iexact='Active'
+            ).first()
+
+            if existing_loan:
+                print("✅ ACCUMULATING INTO:", existing_loan.id)
+
+                existing_loan.amount = to_decimal(existing_loan.amount) + total_amount
+
+                existing_loan.cash = str(
+                    to_decimal(existing_loan.cash) + cash
+                )
+
+                existing_loan.bank1 = str(
+                    to_decimal(existing_loan.bank1) + bank1
+                )
+
+                existing_loan.bank2 = str(
+                    to_decimal(existing_loan.bank2) + bank2
+                )
+
+                existing_loan.save(force_update=True)
+
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Amount added to existing loan'
+                })
+
+        # =========================
+        # 🔥 CREATE NEW LOAN
+        # =========================
         loan_data = {
             'gen_no': gen_no,
             'name': user.name,
-            'amount': amount,
-            'cash': cash,
+            'amount': total_amount,
+            'cash': str(cash),
             'online': online,
-            'bank1': bank1,
-            'bank2': bank2,
-            'adj': adj,
+            'bank1': str(bank1),
+            'bank2': str(bank2),
+            'adj': str(adj),
+            'opening_balance': opening_balance,  # ✅ NEW
             'type_of_loan': loan_type
         }
 
@@ -1130,13 +1225,11 @@ def submit_new_table(request):
         if form.is_valid():
             loan = form.save(commit=False)
 
-            # ================= 🔥 CORE LOGIC =================
+            # ✅ REF FIX
             if ref and ref.strip():
                 loan.code = ref.strip()
             else:
-                loan.code = None   # 🔥 IMPORTANT
-            # else → DO NOTHING (your model auto-generates)
-            # ===============================================
+                loan.code = None  # let model generate
 
             # DATE FIX
             if loan_date_str:
@@ -1148,19 +1241,28 @@ def submit_new_table(request):
             loan.interest = 0
 
             try:
+                if ref and Loan.objects.filter(code=ref.strip()).exists():
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Reference already exists. Please use a different one.'
+                    })
                 loan.save()
             except IntegrityError:
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Reference already exists. Please use a different Ref.'
+                    'message': 'Reference already exists.'
                 })
 
             send_loan_email(user.Email)
 
-            return JsonResponse({'status': 'success', 'message': 'Loan added successfully!'}, status=200)
+            return JsonResponse({
+                'status': 'success',
+                'message': 'New loan created'
+            })
 
-        return JsonResponse({'status': 'error', 'message': 'Form validation failed.'}, status=400)
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=405)
+        return JsonResponse({'status': 'error', 'message': 'Form invalid'}, status=400)
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=405)
 def search_user_codes(request):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         term = request.GET.get('term', '')
@@ -2592,7 +2694,7 @@ def cash_withdrawals(request):
     # ------------------ CashEntry (SAME AS cash_book) ------------------
     cash_entries = CashEntry.objects.all().order_by('-datetime')
 
-    class CashBookEntry:
+    class CashBookEntry:        
         def __init__(self, cash_entry):
             raw_amount = Decimal(cash_entry.amount)
             self.amount = abs(raw_amount)
@@ -2690,8 +2792,11 @@ def cash_withdrawals(request):
         'adj': receipts_totals['adj'] - payments_totals['adj'],
     }
 
+    cash_entries = CashEntry.objects.all().order_by('-datetime')
+
     return render(request, 'cash_withdrawals.html', {
-        'withdrawals': withdrawals
+        'withdrawals': withdrawals,
+        'cash_entries': cash_entries   # ✅ ADD THIS
     })
 from decimal import Decimal
 from django.shortcuts import redirect
@@ -3683,6 +3788,27 @@ from .services import process_loan_repayment
 from .models import generate_unique_repayment_code
 
 def loanadd(request):
+    VALID_LOAN_TYPES = [
+    "MTL LOAN",
+    "FDL LOAN",
+    "KVP/NSC LOAN",
+    "THRIFT FUNDS",
+    "FIXED DEPOSITS",
+    "WELFARE COLLECTIONS",]
+
+
+    PAYMENT_TYPES = [
+    "SALARY PAID",
+    "OFFICE EXPENSES",
+    "OTHER PAYMENTS",
+]
+
+    RECEIPT_TYPES = [
+    "ADMISSION FEES",
+    "OTHER RECEIPTS",
+                         ]
+
+
     if request.method == "POST":
         modes     = request.POST.getlist('mode[]')
         gen_nos   = request.POST.getlist('gen_no[]')
@@ -3692,6 +3818,7 @@ def loanadd(request):
         bank1s    = request.POST.getlist('bank1[]')
         bank2s    = request.POST.getlist('bank2[]')
         adjs      = request.POST.getlist('adj[]')
+        opening_balances = request.POST.getlist('opening_balance[]')
         dates     = request.POST.getlist('date[]')
         loan_ids  = request.POST.getlist('loan_id[]')
 
@@ -3715,8 +3842,12 @@ def loanadd(request):
             bank1 = to_decimal(bank1s[i])
             bank2 = to_decimal(bank2s[i])
             adj   = to_decimal(adjs[i])
+            opening_balance = to_decimal(opening_balances[i]) if i < len(opening_balances) else Decimal('0')
 
-            total_amount = cash + bank1 + bank2 + adj
+            if mode == "issue":
+                total_amount = cash + bank1 + bank2 + adj + opening_balance
+            else:
+                total_amount = cash + bank1 + bank2 + adj
             if total_amount <= 0:
                 continue
 
@@ -3734,11 +3865,41 @@ def loanadd(request):
             # ==================================================
 # ==================================================
 # 🟢 ISSUE NEW LOAN
-# ==================================================
             if mode == "issue":
                 if not loan_type:
                     continue
 
+                # ==================================================
+                # 🟡 HANDLE NON-LOAN TYPES → OtherCashTransaction
+                # ==================================================
+                if loan_type not in VALID_LOAN_TYPES:
+
+                    # 🔥 Decide transaction type dynamically
+                    if loan_type in PAYMENT_TYPES:
+                        transaction_type = 'PAYMENT'
+                    elif loan_type in RECEIPT_TYPES:
+                        transaction_type = 'RECEIPT'
+                    else:
+                        # fallback (optional safety)
+                        transaction_type = 'PAYMENT'
+
+                    other_txn = OtherCashTransaction(
+                        transaction_type=transaction_type,
+                        gen_no=gen_no,
+                        name=name,
+                        type_of_loan=loan_type,
+                        cash=cash,
+                        bank1=bank1,
+                        bank2=bank2,
+                        created_at=created_at
+                    )
+
+                    other_txn.save()
+                    continue  # 🚀 skip Loan
+
+                # ==================================================
+                # 🟢 NORMAL LOAN FLOW
+                # ==================================================
                 loan = Loan(
                     gen_no=gen_no,
                     name=name,
@@ -3748,18 +3909,18 @@ def loanadd(request):
                     bank1=str(bank1),
                     bank2=str(bank2),
                     adj=str(adj),
+                    opening_balance=opening_balance,
                     created_at=created_at,
                     loan_status='Active'
                 )
 
                 user_loan_id = loan_ids[i].strip() if i < len(loan_ids) else ""
                 if user_loan_id:
-                    loan.code = user_loan_id  # optional
+                    loan.code = user_loan_id
 
-                loan.save()  # auto-generate code if empty
+                loan.save()
 
-                # 🟢 Recalculate interest for the new loan immediately
-                loan.interest = Decimal('0.00')  # reset just in case
+                loan.interest = Decimal('0.00')
                 loan.save(update_fields=['interest'])
                 process_loan_repayment(loan)
             # ==================================================
@@ -4269,8 +4430,10 @@ def loan_repayment_list(request, loan_id):
                     bank1 = get_decimal(f"bank1_{repayment.code}")
                     bank2 = get_decimal(f"bank2_{repayment.code}")
                     adj = get_decimal(f"adj_{repayment.code}")
+                    opening_balance = get_decimal(f"opening_balance_{repayment.code}")
 
-                    total_payment = cash + bank1 + bank2 + adj
+                    actual_payment = cash + bank1 + bank2 + adj
+                    total_payment = actual_payment + opening_balance
 
                     # ---------- RECALCULATE SPLIT ----------
                     previous = LoanRepayment.objects.filter(
@@ -4289,15 +4452,15 @@ def loan_repayment_list(request, loan_id):
                     remaining_principal = loan_amount - total_paid_principal
                     remaining_interest = loan_interest - total_paid_interest
 
-                    paid_to_interest = min(remaining_interest, total_payment)
-                    leftover = total_payment - paid_to_interest
+                    paid_to_interest = min(remaining_interest, actual_payment)
+                    leftover = actual_payment - paid_to_interest
                     paid_to_principal = min(remaining_principal, leftover)
-
                     # ---------- SAVE ----------
                     repayment.cash = cash
                     repayment.bank1 = bank1
                     repayment.bank2 = bank2
                     repayment.adj = adj
+                    repayment.opening_balance = opening_balance
                     repayment.total_payment = total_payment
                     repayment.paid_to_interest = paid_to_interest
                     repayment.paid_to_principal = paid_to_principal
@@ -4311,6 +4474,7 @@ def loan_repayment_list(request, loan_id):
             total_bank1=Sum('bank1'),
             total_bank2=Sum('bank2'),
             total_adj=Sum('adj'),
+            total_opening_balance=Sum('opening_balance'), 
             total_payment=Sum('total_payment'),
         )
 
@@ -4979,3 +5143,18 @@ def download_user_pdf(request, gen_no, report_type):
     build_user_pdf(response, gen_no, loan_blocks)
 
     return response
+
+
+
+
+def edit_cash_entry(request, id):
+    entry = CashEntry.objects.get(id=id)
+
+    if request.method == "POST":
+        entry.amount = request.POST.get("amount")
+        entry.type_of_cash = request.POST.get("type_of_cash")
+        entry.remarks = request.POST.get("remarks")
+        entry.save()
+        return redirect('cash_withdrawals')
+
+    return render(request, 'edit_cash.html', {'entry': entry})

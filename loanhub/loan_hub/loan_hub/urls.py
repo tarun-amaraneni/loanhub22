@@ -235,6 +235,12 @@ path(
         views.loan_repayment_list,
         name='loan_repayment_list'
     ),
+
+
+
+
+    # urls.py
+path('edit-cash/<int:id>/', edit_cash_entry, name='edit_cash_entry'),
 ]
 
 

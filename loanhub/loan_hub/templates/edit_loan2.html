@@ -3,143 +3,209 @@
 
 <style>
 /* ===========================
-   EDIT OTHER CASH TRANSACTION
+   PAGE BACKGROUND
    =========================== */
+body {
+    background: #f3f6fa;
+    font-family: Arial, sans-serif;
+}
 
+/* ===========================
+   CENTER WRAPPER
+   =========================== */
+.center-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+}
+
+/* ===========================
+   FORM CARD
+   =========================== */
+.form-card {
+    background: #ffffff;
+    padding: 25px 30px;
+    border-radius: 14px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+    min-width: 420px;
+}
+
+/* ===========================
+   HEADING
+   =========================== */
 h3 {
-    margin-bottom: 15px;
+    text-align: center;
+    margin-bottom: 20px;
     color: #333;
 }
 
+/* ===========================
+   INPUTS
+   =========================== */
 .editable, select {
     width: 100%;
-    padding: 6px 8px;
+    padding: 7px 10px;
     border: 1px solid #ccc;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 14px;
 }
 
-.save-btn,
-.view-btn,
-.delete-btn {
-    padding: 8px 16px;
-    font-size: 14px;
-    border-radius: 5px;
-    border: none;
-    cursor: pointer;
-    margin-right: 8px;
-    transition: all 0.2s ease-in-out;
+.editable:focus, select:focus {
+    border-color: #2196F3;
+    outline: none;
 }
 
-.save-btn {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.save-btn:hover {
-    background-color: #43a047;
-}
-
-.view-btn {
-    background-color: #2196F3;
-    color: white;
-}
-
-.view-btn:hover {
-    background-color: #1e88e5;
-}
-
-.delete-btn {
-    background-color: #e53935;
-    color: white;
-}
-
-.delete-btn:hover {
-    background-color: #c62828;
-}
-
+/* ===========================
+   TABLE
+   =========================== */
 .styled-table {
-    width: auto;
+    width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
 }
 
 .styled-table th {
-    text-align: center;
-    background: #f2f2f2;
-    padding: 8px;
+    text-align: left;
+    background: #f5f7fb;
+    padding: 10px;
+    width: 40%;
+    font-weight: 600;
 }
 
 .styled-table td {
-    padding: 8px;
+    padding: 10px;
+}
+
+/* ===========================
+   BUTTONS
+   =========================== */
+.save-btn,
+.view-btn,
+.delete-btn {
+    padding: 9px 18px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    margin-right: 10px;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Save */
+.save-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+.save-btn:hover {
+    background-color: #43a047;
+}
+
+/* Cancel */
+.view-btn {
+    background-color: #2196F3;
+    color: white;
+}
+.view-btn:hover {
+    background-color: #1e88e5;
+}
+
+/* Delete */
+.delete-btn {
+    background-color: #e53935;
+    color: white;
+}
+.delete-btn:hover {
+    background-color: #c62828;
+}
+
+/* ===========================
+   BUTTON GROUP
+   =========================== */
+.button-group {
+    margin-top: 15px;
+    text-align: center;
 }
 </style>
 
-<h3>EDIT TRANSACTION ✏️</h3>
+<div class="center-wrapper">
+    <div class="form-card">
 
-<form method="post">
-    {% csrf_token %}
+        <h3>EDIT TRANSACTION ✏️</h3>
 
-    <table class="styled-table">
+        <form method="post">
+            {% csrf_token %}
 
-        <tr>
-            <th>Transaction Type</th>
-            <td>
-                <select name="transaction_type">
-                    <option value="RECEIPT" {% if transaction.transaction_type == "RECEIPT" %}selected{% endif %}>
-                        Receipt
-                    </option>
-                    <option value="PAYMENT" {% if transaction.transaction_type == "PAYMENT" %}selected{% endif %}>
-                        Payment
-                    </option>
-                </select>
-            </td>
-        </tr>
+            <table class="styled-table">
 
-        <tr>
-            <th>Type of Loan</th>
-            <td>
-                <input class="editable" name="type_of_loan" value="{{ transaction.type_of_loan }}">
-            </td>
-        </tr>
+                <tr>
+                    <th>Transaction Type</th>
+                    <td>
+                        <select name="transaction_type">
+                            <option value="RECEIPT" {% if transaction.transaction_type == "RECEIPT" %}selected{% endif %}>
+                                Receipt
+                            </option>
+                            <option value="PAYMENT" {% if transaction.transaction_type == "PAYMENT" %}selected{% endif %}>
+                                Payment
+                            </option>
+                        </select>
+                    </td>
+                </tr>
 
-        <tr>
-            <th>Gen No</th>
-            <td>
-                <input class="editable" value="{{ transaction.gen_no }}" readonly>
-            </td>
-        </tr>
+                <tr>
+                    <th>Type of Loan</th>
+                    <td>
+                        <input class="editable" name="type_of_loan" value="{{ transaction.type_of_loan }}">
+                    </td>
+                </tr>
 
-        <tr>
-            <th>Cash</th>
-            <td><input class="editable" name="cash" value="{{ transaction.cash }}"></td>
-        </tr>
+                <tr>
+                    <th>Gen No</th>
+                    <td>
+                        <input class="editable" value="{{ transaction.gen_no }}" readonly>
+                    </td>
+                </tr>
 
-        <tr>
-            <th>Bank1</th>
-            <td><input class="editable" name="bank1" value="{{ transaction.bank1 }}"></td>
-        </tr>
+                <tr>
+                    <th>Cash</th>
+                    <td><input class="editable" name="cash" value="{{ transaction.cash }}"></td>
+                </tr>
 
-        <tr>
-            <th>Bank2</th>
-            <td><input class="editable" name="bank2" value="{{ transaction.bank2 }}"></td>
-        </tr>
+                <tr>
+                    <th>Bank1</th>
+                    <td><input class="editable" name="bank1" value="{{ transaction.bank1 }}"></td>
+                </tr>
 
-        <tr>
-            <th>Total Amount</th>
-            <td>
-                <input class="editable" value="{{ transaction.amount }}" readonly>
-            </td>
-        </tr>
+                <tr>
+                    <th>Bank2</th>
+                    <td><input class="editable" name="bank2" value="{{ transaction.bank2 }}"></td>
+                </tr>
 
-    </table>
+                <tr>
+                    <th>Total Amount</th>
+                    <td>
+                        <input class="editable" value="{{ transaction.amount }}" readonly>
+                    </td>
+                </tr>
 
-    <br>
+            </table>
 
-    <button type="submit" class="save-btn">Update</button>
-    <a href="{% url 'loans' %}"><button type="button" class="view-btn">Cancel</button></a>
-    <button type="button" class="delete-btn" onclick="deleteTransaction({{ transaction.id }})">Delete</button>
-</form>
+            <div class="button-group">
+                <button type="submit" class="save-btn">Update</button>
+
+                <a href="{% url 'loans' %}">
+                    <button type="button" class="view-btn">Cancel</button>
+                </a>
+
+                <button type="button" class="delete-btn" onclick="deleteTransaction({{ transaction.id }})">
+                    Delete
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+</div>
 
 <script>
 function deleteTransaction(id) {

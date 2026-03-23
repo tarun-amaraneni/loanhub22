@@ -141,6 +141,7 @@ input, select {
                     <th>Bank1</th>
                     <th>Bank2</th>
                     <th>Adj</th>
+                    <th class="opening-balance-header" style="display:none;">Opening Balance</th>
                     <th>Amount</th>
                     <th>Date</th>
                     <th>Action</th>
@@ -236,7 +237,9 @@ function recalcAmount($row) {
         (+$row.find('.cash').val() || 0) +
         (+$row.find('.bank1').val() || 0) +
         (+$row.find('.bank2').val() || 0) +
-        (+$row.find('.adj').val() || 0);
+        (+$row.find('.adj').val() || 0) +
+        (+$row.find('.opening_balance').val() || 0);
+
     $row.find('.amount').val(total);
 }
 
@@ -317,13 +320,24 @@ function addPaymentRow() {
     <td class="loanIdCell"><span class="placeholder-text">Select Mode</span></td>
     <td>
         <select name="loan_type[]" class="loanType">
-            <option value="">-- Select --</option>
-            <option>MTL LOAN</option>
-            <option>FDL LOAN</option>
-            <option>KVP/NSC LOAN</option>
-            <option>THRIFT FUNDS</option>
-            <option>FIXED DEPOSITS</option>
-            <option>WELFARE COLLECTIONS</option>
+<option value="">-- Select --</option>
+
+<!-- 🟢 LOANS -->
+<option>MTL LOAN</option>
+<option>FDL LOAN</option>
+<option>KVP/NSC LOAN</option>
+<option>THRIFT FUNDS</option>
+<option>FIXED DEPOSITS</option>
+<option>WELFARE COLLECTIONS</option>
+
+<!-- 🔴 PAYMENTS -->
+<option>SALARY PAID</option>
+<option>OFFICE EXPENSES</option>
+<option>OTHER PAYMENTS</option>
+
+<!-- 🟡 RECEIPTS -->
+<option>ADMISSION FEES</option>
+<option>OTHER RECEIPTS</option>
         </select>
     </td>
     
@@ -331,28 +345,52 @@ function addPaymentRow() {
     <td><input name="bank1[]" class="bank1" value="0"></td>
     <td><input name="bank2[]" class="bank2" value="0"></td>
     <td><input name="adj[]" class="adj" value="0"></td>
+    <td class="openingBalanceCell" style="display:none;">
+    <input name="opening_balance[]" class="opening_balance" value="0">
+</td>
     <td><input name="amount[]" class="amount" value="0" readonly></td>
     <td><input name="date[]" type="date" value="${today()}"></td>
     <td><button type="button" class="btn-delete" onclick="$(this).closest('tr').remove()">🗑</button></td>
 </tr>
 `);
 
-    row.find('.cash,.bank1,.bank2,.adj').on('input', () => recalcAmount(row));
+    row.find('.cash,.bank1,.bank2,.adj,.opening_balance')
+   .on('input', () => recalcAmount(row));
     $('#paymentTable tbody').append(row);
     setupAutocomplete(row);
+row.find('.modeSelect').on('change', function () {
+    const $cell = row.find('.loanIdCell');
+    const $openingCell = row.find('.openingBalanceCell');
+    const $header = $('.opening-balance-header');
 
-    row.find('.modeSelect').on('change', function () {
-        const $cell = row.find('.loanIdCell');
+    if (this.value === 'issue') {
+        $cell.html(`<input name="loan_id[]" placeholder="Auto Generated (Optional)">`);
 
-        if (this.value === 'issue') {
-            $cell.html(`<input name="loan_id[]" placeholder="Auto Generated (Optional)">`);
-        } else if (this.value === 'existing') {
-            $cell.html(`<select name="loan_id[]" class="loanSelect" required></select>`);
-            loadActiveLoans(row);
-        } else {
-            $cell.html(`<span class="placeholder-text">Select Mode</span>`);
+        // ✅ Show Opening Balance
+        $openingCell.show();
+        $header.show();
+
+    } else if (this.value === 'existing') {
+        $cell.html(`<select name="loan_id[]" class="loanSelect" required></select>`);
+        loadActiveLoans(row);
+
+        // ❌ Hide Opening Balance
+        $openingCell.hide();
+
+        // Hide header ONLY if no rows using it
+        if ($('.openingBalanceCell:visible').length === 0) {
+            $header.hide();
         }
-    });
+
+    } else {
+        $cell.html(`<span class="placeholder-text">Select Mode</span>`);
+        $openingCell.hide();
+
+        if ($('.openingBalanceCell:visible').length === 0) {
+            $header.hide();
+        }
+    }
+});
 }
 
 /* ================= INIT ================= */

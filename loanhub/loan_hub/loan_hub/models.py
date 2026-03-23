@@ -187,6 +187,7 @@ class Loan(models.Model):
     adj = models.CharField(max_length=100, blank=True, default='-')
 
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     code = models.CharField(max_length=10, blank=True, null=True, unique=True)
 
     type_of_loan = models.CharField(max_length=100, choices=LOAN_TYPES)
@@ -329,6 +330,7 @@ class LoanRepayment(models.Model):
     bank1 = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     bank2 = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     adj = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     code = models.CharField(max_length=10, blank=True, null=True, unique=True)
 
 

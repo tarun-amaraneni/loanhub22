@@ -1,6 +1,23 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<!-- ================= PAGE FIX ================= -->
+<style>
+/* 🔥 VERY IMPORTANT FIX */
+.main-content {
+    height: auto !important;
+    overflow: visible !important;
+}
+
+/* Allow full page scroll */
+html, body {
+    height: auto;
+    overflow-y: auto;
+}
+</style>
+
+<!-- ================= TOP UI ================= -->
+
 <div style="padding:30px; font-family: Arial, sans-serif; background:#f5f5f5;">
     <h3 style="margin-bottom:25px; font-weight:600; color:#333;">
         Cash Overview
@@ -8,93 +25,28 @@
 
     <div style="display:flex; gap:20px; flex-wrap:wrap;">
 
-        <!-- Cash -->
-        <div style="
-            border:1px solid #e0e0e0;
-            padding:20px;
-            width:220px;
-            border-radius:12px;
-            box-shadow:0 6px 12px rgba(0,0,0,0.08);
-            background:#fff;
-            transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.15)';"
-           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.08)';">
-            <h5 style="margin:0; color:#555; font-weight:500;">Cash</h5>
-            <h3 style="margin-top:12px; color:#2e7d32;">
-                ₹ {{ withdrawals.cash }}
-            </h3>
-        </div>
-
-        <!-- Bank 1 -->
-        <div style="
-            border:1px solid #e0e0e0;
-            padding:20px;
-            width:220px;
-            border-radius:12px;
-            box-shadow:0 6px 12px rgba(0,0,0,0.08);
-            background:#fff;
-            transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.15)';"
-           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.08)';">
-            <h5 style="margin:0; color:#555; font-weight:500;">Bank 1</h5>
-            <h3 style="margin-top:12px; color:#1565c0;">
-                ₹ {{ withdrawals.bank1 }}
-            </h3>
-        </div>
-
-        <!-- Bank 2 -->
-        <div style="
-            border:1px solid #e0e0e0;
-            padding:20px;
-            width:220px;
-            border-radius:12px;
-            box-shadow:0 6px 12px rgba(0,0,0,0.08);
-            background:#fff;
-            transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.15)';"
-           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.08)';">
-            <h5 style="margin:0; color:#555; font-weight:500;">Bank 2</h5>
-            <h3 style="margin-top:12px; color:#0277bd;">
-                ₹ {{ withdrawals.bank2 }}
-            </h3>
-        </div>
-
-        <!-- Adjustment -->
-        <div style="
-            border:1px solid #e0e0e0;
-            padding:20px;
-            width:220px;
-            border-radius:12px;
-            box-shadow:0 6px 12px rgba(0,0,0,0.08);
-            background:#fff;
-            transition: transform 0.2s, box-shadow 0.2s;
-        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.15)';"
-           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.08)';">
-            <h5 style="margin:0; color:#555; font-weight:500;">Adjustment</h5>
-            <h3 style="margin-top:12px; color:#f9a825;">
-                ₹ {{ withdrawals.adj }}
-            </h3>
-        </div>
+        <div class="box"><h5>Cash</h5><h3 style="color:#2e7d32;">₹ {{ withdrawals.cash }}</h3></div>
+        <div class="box"><h5>Bank 1</h5><h3 style="color:#1565c0;">₹ {{ withdrawals.bank1 }}</h3></div>
+        <div class="box"><h5>Bank 2</h5><h3 style="color:#0277bd;">₹ {{ withdrawals.bank2 }}</h3></div>
+        <div class="box"><h5>Adjustment</h5><h3 style="color:#f9a825;">₹ {{ withdrawals.adj }}</h3></div>
 
     </div>
 </div>
 
-<hr style="margin:45px 0; border:0; border-top:1px solid #ccc;">
+<hr style="margin:45px 0; border-top:1px solid #ccc;">
 
-<h4 style="margin-bottom:20px; color:#333;">Transfer Amount</h4>
+<h4 style="margin-left:30px; margin-bottom:20px;">Transfer Amount</h4>
 
+<div style="margin-left:30px;">
 <form method="post" action="{% url 'cash_transfer' %}">
     {% csrf_token %}
 
     <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:end;">
 
-        <!-- FROM -->
         <div>
-            <label style="font-weight:500;">From</label><br>
-            <select name="from_account" id="from_account"
-                    style="padding:8px 12px; width:180px; border-radius:5px; border:1px solid #ccc;"
-                    onchange="updateToDropdown()"
-                    required>
+            <label>From</label><br>
+            <select name="from_account" id="from_account" style="padding:8px; width:180px;"
+                    onchange="updateToDropdown()" required>
                 <option value="">-- Select --</option>
                 <option value="Cash">Cash</option>
                 <option value="Bank1">Bank 1</option>
@@ -103,52 +55,34 @@
             </select>
         </div>
 
-        <!-- TO -->
         <div>
-            <label style="font-weight:500;">To</label><br>
-            <select name="to_account" id="to_account"
-                    style="padding:8px 12px; width:180px; border-radius:5px; border:1px solid #ccc;"
-                    required>
+            <label>To</label><br>
+            <select name="to_account" id="to_account" style="padding:8px; width:180px;" required>
                 <option value="">-- Select --</option>
             </select>
         </div>
 
-        <!-- AMOUNT -->
         <div>
-            <label style="font-weight:500;">Amount</label><br>
-            <input type="number" name="amount"
-                   step="0.01"
-                   style="padding:8px 12px; width:180px; border-radius:5px; border:1px solid #ccc;"
-                   required>
+            <label>Amount</label><br>
+            <input type="number" name="amount" step="0.01" style="padding:8px; width:180px;" required>
         </div>
-        <!-- DATE -->
-<div>
-    <label style="font-weight:500;">Date</label><br>
-    <input type="date" name="transfer_date" id="transfer_date"
-           style="padding:8px 12px; width:180px; border-radius:5px; border:1px solid #ccc;"
-           required>
-</div>
-        <!-- BUTTON -->
+
+        <div>
+            <label>Date</label><br>
+            <input type="date" name="transfer_date" id="transfer_date"
+                   style="padding:8px; width:180px;" required>
+        </div>
+
         <div>
             <button type="submit"
-                    style="
-                        padding:10px 25px;
-                        background:#2e7d32;
-                        color:#fff;
-                        border:none;
-                        border-radius:6px;
-                        cursor:pointer;
-                        font-weight:600;
-                        transition: background 0.2s;
-                    "
-                    onmouseover="this.style.background='#1b5e20';"
-                    onmouseout="this.style.background='#2e7d32';">
+                    style="padding:10px 25px; background:#2e7d32; color:#fff; border:none; border-radius:6px;">
                 Transfer
             </button>
         </div>
 
     </div>
 </form>
+</div>
 
 <script>
 function updateToDropdown() {
@@ -167,12 +101,141 @@ function updateToDropdown() {
         }
     });
 }
-</script>
-<script>
+
 document.addEventListener("DOMContentLoaded", function() {
-    let today = new Date().toISOString().split('T')[0];
-    document.getElementById("transfer_date").value = today;
+    document.getElementById("transfer_date").value =
+        new Date().toISOString().split('T')[0];
 });
 </script>
+
+<!-- ================= TABLE STYLE ================= -->
+
+<style>
+.box {
+    border:1px solid #e0e0e0;
+    padding:20px;
+    width:220px;
+    border-radius:12px;
+    box-shadow:0 6px 12px rgba(0,0,0,0.08);
+    background:#fff;
+}
+
+.card-box {
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 25px;
+    margin: 30px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* 🔥 KEY FIX HERE */
+.table-wrapper {
+    width: 100%;
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* smooth scroll */
+.table-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+thead th {
+    position: sticky;
+    top: 0;
+    background-color: #354A5E;
+    color: #fff;
+    z-index: 10;
+}
+
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: center;
+}
+
+tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.edit-btn {
+    background: #2563eb;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+}
+</style>
+<div class="card-box">
+
+    <!-- Header with Button -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        
+        <h3 style="margin:0;">Internal Cash Transfers </h3>
+
+        <a href="{% url 'cash_entry' %}"
+           style="
+                background: linear-gradient(135deg, #16a34a, #15803d);
+                color:#fff;
+                padding:10px 18px;
+                border-radius:8px;
+                text-decoration:none;
+                font-weight:600;
+                box-shadow:0 4px 10px rgba(0,0,0,0.1);
+                transition:0.2s;
+           "
+           onmouseover="this.style.transform='translateY(-2px)'"
+           onmouseout="this.style.transform='translateY(0)'">
+            ➕ Add Cash
+        </a>
+
+    </div>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Remarks</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for t in cash_entries %}
+                <tr>
+                    <td>{{ t.code }}</td>
+                    <td>{{ t.type_of_cash }}</td>
+                    <td>₹ {{ t.amount }}</td>
+                    <td>{{ t.remarks|default:"-" }}</td>
+<td>
+    {{ t.datetime|date:"d-m-Y" }}
+</td>
+                    <td>
+                        <a href="{% url 'edit_cash_entry' t.id %}" class="edit-btn">
+                            ✏ Edit
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
 
 {% endblock %}

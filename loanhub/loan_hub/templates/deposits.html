@@ -172,6 +172,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <th style="color: yellow;">Bank1</th>
                         <th style="color: yellow;">Bank2</th>
                         <th style="color: yellow;">Adj</th>
+                        
                         <th style="color: yellow;">Amount</th>
                         <th style="width:140px">Date</th>
                         <th>Actions</th>
@@ -195,6 +196,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <td><input type="text" class="editable" name="Bank1" placeholder="Bank1"></td>
                         <td><input type="text" class="editable" name="Bank2" placeholder="Bank2"></td>
                         <td><input type="text" class="editable" name="Adj" placeholder="Adj"></td>
+
+
                         <td><input type="text" class="editable" name="Amount" placeholder="Amount" readonly></td>
                         <td><input type="date" class="editable payment-date" name="date"></td>
                         <td><button type="submit" class="submit-btn">Submit</button></td>
@@ -220,6 +223,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     <th style="color: yellow;">Bank1</th>
                     <th style="color: yellow;">Bank2</th>
                     <th style="color: yellow;">Adj</th>
+                    
                     <th style="width:140px">Date</th>
                     <th style="width:140px">Actions</th>
                 </tr>
@@ -227,7 +231,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <tbody>
                 {% for item in loans %}
                 <tr style="background-color: #ffffff">
-                    <td>{{ item.loan_type }}</td>
+                    <td>{{ item.loan_type }} Issue</td>
                     <td>{{ item.loan.code }}</td>
                     <td>{% if item.balance != 0 %}{{ item.balance|floatformat:2 }}{% endif %}</td>
                     <td>{% if item.interest != 0 %}{{ item.interest|floatformat:2 }}{% endif %}</td>
@@ -236,6 +240,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     <td>{% if item.loan %}<input name="bank1" class="editable" placeholder="Enter Amount">{% endif %}</td>
                     <td>{% if item.loan %}<input name="bank2" class="editable" placeholder="Enter Amount">{% endif %}</td>
                     <td>{% if item.loan %}<input name="adj" class="editable" placeholder="Enter Amount">{% endif %}</td>
+
+                    
                     <td><input type="date" class="editable receipt-date" name="date" value="{% now 'Y-m-d' %}"></td>
 <td>
     {% if item.loan %}
@@ -317,13 +323,14 @@ function calculateDepositAmount() {
     const bank2 = parseFloat($('input[name="Bank2"]').val()) || 0;
     const adj   = parseFloat($('input[name="Adj"]').val()) || 0;
 
-    const total = cash + bank1 + bank2 + adj;
+const total = cash + bank1 + bank2 + adj;
 
     $('input[name="Amount"]').val(total.toFixed(2));
 }
 
 // Run calculation when user types
-$('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj"]').on('input', function(){
+$('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj"]')
+.on('input', function(){
     calculateDepositAmount();
 });
         // Show all users on focus
@@ -392,19 +399,21 @@ $('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj
                 const bank1 = row.querySelector('input[name="bank1"]').value || '0';
                 const bank2 = row.querySelector('input[name="bank2"]').value || '0';
                 const adj = row.querySelector('input[name="adj"]').value || '0';
+                
                 const date = row.querySelector('input[name="date"]').value || getTodayDate();
 
-                if([cash,bank1,bank2,adj].every(v=>parseFloat(v)===0)){
-                    showAlert('Please enter at least one amount.', 'warning'); return;
-                }
+if([cash, bank1, bank2, adj].every(v => parseFloat(v) === 0)){
+    showAlert('Please enter at least one amount.', 'warning');
+    return;
+}
 
-                const formData = new FormData();
-                formData.append('loan_id', loanId);
-                formData.append('cash', cash);
-                formData.append('bank1', bank1);
-                formData.append('bank2', bank2);
-                formData.append('adj', adj);
-                formData.append('date', date);
+const formData = new FormData();
+formData.append('loan_id', loanId);
+formData.append('cash', cash);
+formData.append('bank1', bank1);
+formData.append('bank2', bank2);
+formData.append('adj', adj);
+formData.append('date', date);
 
                 const loader = showLoader();
 
@@ -432,13 +441,23 @@ $('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj
             const cash = parseFloat(formData.get('Cash'))||0;
             const bank1 = parseFloat(formData.get('Bank1'))||0;
             const bank2 = parseFloat(formData.get('Bank2'))||0;
-            const online = parseFloat(formData.get('Online'))||0;
+            
             const adj = parseFloat(formData.get('Adj'))||0;
 
             if(!loanType){showAlert("Select Loan Type","warning"); return;}
             if(!amount){showAlert("Enter Amount","warning"); return;}
-            if(!cash && !bank1 && !bank2 && !online && !adj){showAlert("Enter at least one value","warning"); return;}
-            if(amount !== (cash+bank1+bank2+online+adj)){showAlert(`Amount ${amount} ≠ ${cash+bank1+bank2+online+adj}`,'warning'); return;}
+            
+
+if([cash, bank1, bank2, adj].every(v => v === 0)){
+    showAlert("Enter at least one value (Cash / Bank / Adj)", "warning");
+    return;
+}
+           const totalEntered = cash + bank1 + bank2 +  adj ;
+
+if(amount !== totalEntered){
+    showAlert(`Amount ${amount} ≠ ${totalEntered}`, 'warning');
+    return;
+}
 
             formData.set('date', formData.get('date')||getTodayDate());
             const loader = showLoader();

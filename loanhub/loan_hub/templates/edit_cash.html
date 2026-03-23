@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="padding:30px; max-width:500px; margin:auto;">
+
+    <h3 style="margin-bottom:20px;">✏ Edit Cash Entry</h3>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div style="margin-bottom:15px;">
+            <label>Amount</label><br>
+            <input type="number" name="amount" value="{{ entry.amount }}"
+                   style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px;">
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label>Type</label><br>
+            <select name="type_of_cash"
+                    style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px;">
+                <option value="Cash" {% if entry.type_of_cash == "Cash" %}selected{% endif %}>Cash</option>
+                <option value="Bank1" {% if entry.type_of_cash == "Bank1" %}selected{% endif %}>Bank 1</option>
+                <option value="Bank2" {% if entry.type_of_cash == "Bank2" %}selected{% endif %}>Bank 2</option>
+                <option value="Adjustment" {% if entry.type_of_cash == "Adjustment" %}selected{% endif %}>Adjustment</option>
+            </select>
+        </div>
+
+        <div style="margin-bottom:15px;">
+            <label>Remarks</label><br>
+            <input type="text" name="remarks" value="{{ entry.remarks }}"
+                   style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px;">
+        </div>
+
+        <button type="submit"
+                style="padding:10px 20px; background:#2e7d32; color:#fff; border:none; border-radius:6px;">
+            Update
+        </button>
+
+        <a href="{% url 'cash_withdrawals' %}"
+           style="margin-left:10px; text-decoration:none; color:#555;">
+           Cancel
+        </a>
+
+    </form>
+
+</div>
+
+{% endblock %}

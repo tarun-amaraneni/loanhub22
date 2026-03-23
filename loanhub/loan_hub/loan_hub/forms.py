@@ -27,7 +27,7 @@ class UserForm(forms.ModelForm):
 class LoanForm(forms.ModelForm):
     class Meta:
         model = Loan
-        fields = ['gen_no', 'name', 'amount', 'cash', 'online', 'bank1','bank2','adj','type_of_loan']
+        fields = ['gen_no', 'name', 'amount', 'cash', 'online', 'bank1','bank2','adj','type_of_loan','opening_balance',]
     gen_no = forms.CharField(
         label='Gen.no',
         max_length=100,
