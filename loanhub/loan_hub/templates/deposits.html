@@ -231,7 +231,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <tbody>
                 {% for item in loans %}
                 <tr style="background-color: #ffffff">
-                    <td>{{ item.loan_type }} Issue</td>
+                    <td>{{ item.loan_type }} Refund</td>
                     <td>{{ item.loan.code }}</td>
                     <td>{% if item.balance != 0 %}{{ item.balance|floatformat:2 }}{% endif %}</td>
                     <td>{% if item.interest != 0 %}{{ item.interest|floatformat:2 }}{% endif %}</td>

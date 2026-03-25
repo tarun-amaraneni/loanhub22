@@ -300,11 +300,13 @@ input[type=text] {
 }
 
 /* Receipts table */
-.inline-content > div:nth-of-type(4) tbody tr {
+/* FORCE green on cells also */
+/* Receipts table - FIX */
+.inline-content > div:nth-of-type(4) tbody tr td {
     background: #e8f6ec;
 }
 
-.inline-content > div:nth-of-type(4) tbody tr:hover {
+.inline-content > div:nth-of-type(4) tbody tr:hover td {
     background: #cdebd6;
 }
 </style>
@@ -345,7 +347,9 @@ input[type=text] {
                             <th>Created At</th>
                         {% endif %}
                     {% else %}
+                    <th>Opening Balance</th>
                         <th>Cash</th>
+                         
                         <th>Bank 1</th>
                         <th>Bank 2</th>
                         <th>Adjustment</th>
@@ -369,6 +373,7 @@ input[type=text] {
             <td>{{ row.created_at|slice:":10" }}</td>
         {% endif %}
     {% else %}
+    <td>{{ row.opening_balance }}</td>
         <td>{{ row.cash }}</td>
         <td>{{ row.bank1 }}</td>
         <td>{{ row.bank2 }}</td>
@@ -513,6 +518,7 @@ html += `
                             <th>Principal</th>
                             <th>Interest</th>
                             <th>Total</th>
+                            <th>Opening Balance</th>
                             <th>Cash</th>
                             <th>Bank1</th>
                             <th>Bank2</th>
@@ -532,6 +538,7 @@ html += `
                             <td>${p.principal || 0}</td>
                             <td>${p.interest || 0}</td>
                             <td>${p.total || 0}</td>
+                            <td>${p.opening_balance || 0}</td>
                             <td>${p.cash || 0}</td>
                             <td>${p.bank1 || 0}</td>
                             <td>${p.bank2 || 0}</td>
@@ -555,6 +562,7 @@ html += `
                             <th>Total Payment</th>
                             <th>Paid to Interest</th>
                             <th>Paid to Principal</th>
+                            <th>Opening Balance</th>
                             <th>Cash</th>
                             <th>Bank1</th>
                             <th>Bank2</th>
@@ -575,6 +583,7 @@ html += `
                             <td>${r.total_payment || 0}</td>
                             <td>${r.paid_to_interest || 0}</td>
                             <td>${r.paid_to_principal || 0}</td>
+                            <td>${r.opening_balance || 0}</td>
                             <td>${r.cash || 0}</td>
                             <td>${r.bank1 || 0}</td>
                             <td>${r.bank2 || 0}</td>

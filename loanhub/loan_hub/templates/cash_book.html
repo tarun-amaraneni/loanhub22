@@ -725,10 +725,10 @@ function calculateRowAmounts(tableId){
     const rows=document.querySelectorAll(`#${tableId} tbody tr`);
 
     rows.forEach(row=>{
-const cash  = parseFloat(row.cells[5]?.innerText)||0;
-const bank1 = parseFloat(row.cells[6]?.innerText)||0;
-const bank2 = parseFloat(row.cells[7]?.innerText)||0;
-const adj   = parseFloat(row.cells[8]?.innerText)||0;
+const cash  = parseFloat(row.cells[5]?.innerText.replace(/[₹,]/g,'')) || 0;
+const bank1 = parseFloat(row.cells[6]?.innerText.replace(/[₹,]/g,'')) || 0;
+const bank2 = parseFloat(row.cells[7]?.innerText.replace(/[₹,]/g,'')) || 0;
+const adj   = parseFloat(row.cells[8]?.innerText.replace(/[₹,]/g,'')) || 0;
 const opening = parseFloat(
     (row.cells[9]?.innerText || "0")
         .replace(/[₹,\s]/g,'')
