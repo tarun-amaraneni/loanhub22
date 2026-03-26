@@ -419,14 +419,21 @@ formData.append('date', date);
 
                 fetch('{% url "deposits" %}', {method:'POST', body:formData, headers:{'X-CSRFToken':'{{ csrf_token }}'}})
                 .then(res=>res.json())
-                .then(data=>{
-                    hideLoader(loader);
-                    if(data.status==='success'){
-                        showAlert('Loan details updated successfully!', 'success');
-                        clearRowInputs(row);
-                        setTimeout(()=>window.location.reload(), 3000);
-                    } else { showAlert('Error: '+data.message,'danger'); }
-                })
+.then(data=>{
+    hideLoader(loader);
+    if(data.status==='success'){
+
+        const loanType = row.querySelector('td:first-child').innerText;
+        const cleanLoanType = loanType.replace(' Refund', '');
+
+        showAlert(`${cleanLoanType} updated successfully!`, 'success');
+
+        clearRowInputs(row);
+        setTimeout(()=>window.location.reload(), 3000);
+    } else {
+        showAlert('Error: '+data.message,'danger');
+    }
+})
                 .catch(err=>{ hideLoader(loader); showAlert('An error occurred.', 'danger'); console.error(err); });
             });
         });
@@ -463,7 +470,21 @@ if(amount !== totalEntered){
             const loader = showLoader();
             fetch('{% url "submit_new_table" %}', {method:'POST', body:formData, headers:{'X-CSRFToken':'{{ csrf_token }}'}})
             .then(res=>res.json())
-            .then(data=>{ hideLoader(loader); if(data.status==='success'){showAlert('Deposit added successfully!','success'); setTimeout(()=>window.location.reload(),2000);} else{showAlert('Error: '+data.message,'danger');} })
+            .then(data=>{
+    hideLoader(loader);
+
+    if(data.status==='success'){
+
+        const cleanLoanType = loanType.replace(' Collection', '');
+
+        showAlert(`${cleanLoanType} submitted successfully!`, 'success');
+
+        setTimeout(()=>window.location.reload(),2000);
+
+    } else {
+        showAlert('Error: '+data.message,'danger');
+    }
+})
             .catch(err=>{ hideLoader(loader); showAlert('An error occurred.', 'danger'); console.error(err); });
         });
 

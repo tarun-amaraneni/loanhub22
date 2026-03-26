@@ -541,7 +541,12 @@ if ([cash, bank1, bank2, adj].every(val => parseFloat(val) === 0)){
             .then(data => {
                 hideLoadingIndicator(loader);
                 if (data.status === 'success') {
-                    showAlert('Loan details updated successfully!', 'success');
+
+                    const loanType = row.querySelector('td:first-child').innerText;
+                    const cleanLoanType = loanType.replace(' Collection', '');
+
+                    showAlert(`${cleanLoanType} updated successfully!`, 'success');
+
                     clearInputFields(row);
                     setTimeout(() => window.location.reload(), 3000);
                 } else {
@@ -600,15 +605,15 @@ const totalEntered = cash + bank1 + bank2 + adj;
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
             .then(res => res.json())
-            .then(data => {
-                hideLoadingIndicator(loader);
-                if (data.status === 'success') {
-                    showAlert('Loan added successfully!', 'success');
-                    setTimeout(() => window.location.reload(), 2000);
-                } else {
-                    showAlert('Error: ' + data.message, 'danger');
-                }
-            })
+        .then(data => {
+            hideLoadingIndicator(loader);
+            if (data.status === 'success') {
+                showAlert(`${loanType} submitted successfully!`, 'success');
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                showAlert('Error: ' + data.message, 'danger');
+            }
+        })
             .catch(err => {
                 hideLoadingIndicator(loader);
                 showAlert('An error occurred while adding the Loan.', 'danger');

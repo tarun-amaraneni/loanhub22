@@ -1228,9 +1228,8 @@ def submit_new_table(request):
             # ✅ REF FIX
             if ref and ref.strip():
                 loan.code = ref.strip()
-            else:
-                loan.code = None  # let model generate
-
+            # ❌ DO NOT set loan.code = None
+            # Let model handle auto-generation
             # DATE FIX
             if loan_date_str:
                 try:
@@ -1241,11 +1240,12 @@ def submit_new_table(request):
             loan.interest = 0
 
             try:
-                if ref and Loan.objects.filter(code=ref.strip()).exists():
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': 'Reference already exists. Please use a different one.'
-                    })
+                if ref and ref.strip():
+                    if Loan.objects.filter(code=ref.strip()).exists():
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Reference already exists. Please use a different one.'
+                        })
                 loan.save()
             except IntegrityError:
                 return JsonResponse({
@@ -1884,11 +1884,15 @@ def cash_entry_view(request):
             else:
                 dt = datetime.now()
 
-            while True:
-                code = f"CA{random.randint(1000,9999)}"
-                if not CashEntry.objects.filter(code=code).exists():
-                    break
+            last_entry = CashEntry.objects.filter(code__startswith='CA').order_by('-id').first()
 
+            if last_entry and last_entry.code:
+                last_number = int(last_entry.code.replace('CA', ''))
+                new_number = last_number + 1
+            else:
+                new_number = 1
+
+            code = f"CA{str(new_number).zfill(4)}"
             CashEntry.objects.create(
                 amount=Decimal(amount),
                 type_of_cash=type_of_cash,
