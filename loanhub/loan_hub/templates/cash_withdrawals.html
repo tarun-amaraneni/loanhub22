@@ -3,13 +3,25 @@
 
 <!-- ================= PAGE FIX ================= -->
 <style>
-/* 🔥 VERY IMPORTANT FIX */
+    .delete-btn {
+    background: #dc2626;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    margin-left: 5px;
+    transition: 0.2s;
+}
+
+.delete-btn:hover {
+    background: #b91c1c;
+}
 .main-content {
     height: auto !important;
     overflow: visible !important;
 }
 
-/* Allow full page scroll */
 html, body {
     height: auto;
     overflow-y: auto;
@@ -25,10 +37,14 @@ html, body {
 
     <div style="display:flex; gap:20px; flex-wrap:wrap;">
 
-        <div class="box"><h5>Cash</h5><h3 style="color:#2e7d32;">₹ {{ withdrawals.cash }}</h3></div>
-        <div class="box"><h5>Bank 1</h5><h3 style="color:#1565c0;">₹ {{ withdrawals.bank1 }}</h3></div>
-        <div class="box"><h5>Bank 2</h5><h3 style="color:#0277bd;">₹ {{ withdrawals.bank2 }}</h3></div>
-        <div class="box"><h5>Adjustment</h5><h3 style="color:#f9a825;">₹ {{ withdrawals.adj }}</h3></div>
+        <div class="box"><h5>Cash</h5><h3 style="color:#2e7d32;" class="indian-fmt" data-value="{{ withdrawals.cash|default:'0' }}">₹ 0.00</h3></div>
+        <div class="box"><h5>Bank 1</h5><h3 style="color:#1565c0;" class="indian-fmt" data-value="{{ withdrawals.bank1|default:'0' }}">₹ 0.00</h3></div>
+        <div class="box"><h5>Bank 2</h5><h3 style="color:#0277bd;" class="indian-fmt" data-value="{{ withdrawals.bank2|default:'0' }}">₹ 0.00</h3></div>
+        <div class="box"><h5>Adjustment</h5><h3 style="color:#f9a825;" class="indian-fmt" data-value="{{ withdrawals.adj|default:'0' }}">₹ 0.00</h3></div>
+        <div class="box">
+            <h5>Opening Balance</h5>
+            <h3 style="color:#6a1b9a;" class="indian-fmt" data-value="{{ withdrawals.opening_balance|default:'0' }}">₹ 0.00</h3>
+        </div>
 
     </div>
 </div>
@@ -52,6 +68,7 @@ html, body {
                 <option value="Bank1">Bank 1</option>
                 <option value="Bank2">Bank 2</option>
                 <option value="Adjustment">Adjustment</option>
+                <option value="opening balance">Opening Balance</option>
             </select>
         </div>
 
@@ -84,30 +101,6 @@ html, body {
 </form>
 </div>
 
-<script>
-function updateToDropdown() {
-    const from = document.getElementById("from_account").value;
-    const to = document.getElementById("to_account");
-
-    const options = ["Cash", "Bank1", "Bank2", "Adjustment"];
-    to.innerHTML = '<option value="">-- Select --</option>';
-
-    options.forEach(opt => {
-        if (opt !== from) {
-            const option = document.createElement("option");
-            option.value = opt;
-            option.text = opt.replace("Bank", "Bank ");
-            to.appendChild(option);
-        }
-    });
-}
-
-document.addEventListener("DOMContentLoaded", function() {
-    document.getElementById("transfer_date").value =
-        new Date().toISOString().split('T')[0];
-});
-</script>
-
 <!-- ================= TABLE STYLE ================= -->
 
 <style>
@@ -128,7 +121,6 @@ document.addEventListener("DOMContentLoaded", function() {
     box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
-/* 🔥 KEY FIX HERE */
 .table-wrapper {
     width: 100%;
     max-height: 500px;
@@ -136,7 +128,6 @@ document.addEventListener("DOMContentLoaded", function() {
     overflow-x: auto;
 }
 
-/* smooth scroll */
 .table-wrapper::-webkit-scrollbar {
     width: 6px;
 }
@@ -177,13 +168,17 @@ tr:nth-child(even) {
     text-decoration: none;
 }
 </style>
+
+
+<hr style="margin:45px 0; border-top:1px solid #ccc;">
+
+<h4 style="margin-left:30px; margin-bottom:20px;">
+    Internal Cash Transfers
+</h4>
 <div class="card-box">
 
-    <!-- Header with Button -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        
-        <h3 style="margin:0;">Internal Cash Transfers </h3>
-
+        <h3 style="margin:0;">Internal Cash Transfers</h3>
         <a href="{% url 'cash_entry' %}"
            style="
                 background: linear-gradient(135deg, #16a34a, #15803d);
@@ -199,7 +194,6 @@ tr:nth-child(even) {
            onmouseout="this.style.transform='translateY(0)'">
             ➕ Add Cash
         </a>
-
     </div>
 
     <div class="table-wrapper">
@@ -220,15 +214,21 @@ tr:nth-child(even) {
                 <tr>
                     <td>{{ t.code }}</td>
                     <td>{{ t.type_of_cash }}</td>
-                    <td>₹ {{ t.amount }}</td>
+                    <td class="indian-fmt" data-value="{{ t.amount|default:'0' }}">₹ 0.00</td>
                     <td>{{ t.remarks|default:"-" }}</td>
-<td>
-    {{ t.datetime|date:"d-m-Y" }}
-</td>
+                    <td>{{ t.datetime|date:"d-m-Y" }}</td>
                     <td>
                         <a href="{% url 'edit_cash_entry' t.id %}" class="edit-btn">
                             ✏ Edit
                         </a>
+                        <form method="POST" action="{% url 'delete_cash_entry' t.id %}"
+                              style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="delete-btn"
+                                onclick="return confirm('Are you sure you want to delete this entry?');">
+                                🗑 Delete
+                            </button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -237,5 +237,61 @@ tr:nth-child(even) {
     </div>
 
 </div>
+
+<!-- ================= SCRIPTS ================= -->
+<script>
+/* ── Indian number formatter ── */
+function formatIndianNumber(value) {
+    if (value === null || value === undefined || value === "") return "0.00";
+    value = value.toString().replace(/,/g, '');
+    let num = Number(value);
+    if (isNaN(num)) return "0.00";
+    let sign = num < 0 ? "-" : "";
+    num = Math.abs(num);
+    let parts = num.toFixed(2).split(".");
+    let integerPart = parts[0];
+    let decimalPart = parts[1];
+    let last3 = integerPart.slice(-3);
+    let otherNumbers = integerPart.slice(0, -3);
+    if (otherNumbers !== "") last3 = "," + last3;
+    let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + last3;
+    return sign + formatted + "." + decimalPart;
+}
+
+/* ── Apply to all .indian-fmt elements ── */
+function applyIndianFormat() {
+    document.querySelectorAll('.indian-fmt').forEach(el => {
+        const raw = el.getAttribute('data-value') || '0';
+        el.innerText = '₹ ' + formatIndianNumber(raw);
+    });
+}
+
+/* ── Transfer dropdowns ── */
+function updateToDropdown() {
+    const from = document.getElementById("from_account").value;
+    const to = document.getElementById("to_account");
+
+    const options = ["Cash", "Bank1", "Bank2", "Adjustment", "opening balance"];
+    to.innerHTML = '<option value="">-- Select --</option>';
+
+    options.forEach(opt => {
+        if (opt !== from) {
+            const option = document.createElement("option");
+            option.value = opt;
+            option.text = opt === "opening balance" ? "Opening Balance" : opt.replace("Bank", "Bank ");
+            to.appendChild(option);
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Set today's date
+    document.getElementById("transfer_date").value =
+        new Date().toISOString().split('T')[0];
+
+    // Apply Indian formatting everywhere
+    applyIndianFormat();
+});
+</script>
 
 {% endblock %}

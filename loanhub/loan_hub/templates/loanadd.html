@@ -5,398 +5,765 @@
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 
 <style>
-/* ================= CARD ================= */
-.card-box {
-    background: #ffffff;
-    border-radius: 14px;
-    padding: 25px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+/* ── CARD ── */
+.card-box { background:#fff; border-radius:14px; padding:25px; box-shadow:0 6px 18px rgba(0,0,0,0.08); }
+.header-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.header-bar h2 { font-size:22px; font-weight:600; color:#2C3F51; }
+.btn-add { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; padding:10px 18px; border:none; border-radius:8px; cursor:pointer; font-weight:600; }
+
+/* ── TABLE ── */
+.table-wrapper { width:100%; max-height:400px; overflow-y:auto; overflow-x:auto; border:1px solid #e5e7eb; border-radius:12px;
+  box-shadow:inset 0 -15px 15px -10px rgba(0,0,0,0.15), inset 0 15px 15px -10px rgba(0,0,0,0.1); }
+table { width:100%; border-collapse:collapse; min-width:1000px; }
+thead th { position:sticky; top:0; background-color:#354A5E; color:#fff; z-index:5; }
+th, td { padding:10px 12px; border-bottom:1px solid #e5e7eb; text-align:center; background:#fff; }
+input, select { width:100%; padding:7px 10px; border-radius:6px; border:1px solid #d1d5db; box-sizing:border-box; }
+.btn-delete { background:#dc2626; color:#fff; border:none; border-radius:7px; padding:6px 12px; cursor:pointer; width:auto; }
+.btn-view   { background:#0891b2; color:#fff; border:none; border-radius:7px; padding:6px 12px; cursor:pointer; width:auto; }
+.action-btns { display:flex; gap:6px; justify-content:center; }
+.btn-submit { margin-top:20px; background:#15803d; color:#fff; padding:10px 24px; border:none; border-radius:8px; cursor:pointer; float:right; }
+.placeholder-text { color:#9ca3af; font-style:italic; }
+
+/* ── jquery-ui autocomplete z-index fix ── */
+.ui-autocomplete { z-index:99999 !important; }
+
+/* ══════════════════════════════════════
+   ADD MODAL
+══════════════════════════════════════ */
+#rowModal {
+  display:none; position:fixed; inset:0; z-index:9999;
+  background:rgba(0,0,0,0.5);
+  align-items:center; justify-content:center;
 }
-
-/* ================= HEADER ================= */
-.header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+#rowModal.open { display:flex; }
+.modal-box {
+  background:#fff; border-radius:16px; padding:30px;
+  width:620px; max-width:96vw; max-height:92vh; overflow-y:auto;
+  box-shadow:0 24px 64px rgba(0,0,0,0.28);
 }
-.header-bar h2 {
-    font-size: 22px;
-    font-weight: 600;
-    color: #2C3F51;
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; }
+.modal-header h3 { font-size:19px; font-weight:700; color:#2C3F51; margin:0; }
+.modal-close { background:none; border:none; font-size:26px; cursor:pointer; color:#9ca3af; line-height:1; width:auto; padding:0; }
+.modal-close:hover { color:#374151; }
+.modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.modal-field { display:flex; flex-direction:column; gap:5px; }
+.modal-field label { font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.5px; }
+.modal-field input, .modal-field select { width:100%; box-sizing:border-box; }
+.modal-section-title {
+  grid-column:span 2; font-size:11px; font-weight:700; color:#9ca3af;
+  text-transform:uppercase; letter-spacing:.6px;
+  border-bottom:1px solid #f3f4f6; padding-bottom:6px; margin-top:4px;
 }
-
-/* ================= BUTTON ================= */
-.btn-add {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: #fff;
-    padding: 10px 18px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: 600;
+.amount-preview {
+  margin-top:16px; background:#eff6ff; border:1px solid #bfdbfe;
+  border-radius:10px; padding:14px 18px;
+  display:flex; justify-content:space-between; align-items:center;
 }
+.amount-preview .ap-label { font-size:13px; color:#1d4ed8; font-weight:600; }
+.amount-preview .ap-value { font-size:22px; font-weight:800; color:#1d4ed8; }
+.modal-footer { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+.btn-cancel    { background:#fff; color:#6b7280; border:1px solid #d1d5db; padding:10px 22px; border-radius:8px; cursor:pointer; font-weight:600; width:auto; }
+.btn-modal-add { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; padding:10px 24px; border:none; border-radius:8px; cursor:pointer; font-weight:700; width:auto; }
 
-/* ================= TABLE WRAPPER (KEY FIX) ================= */
-.table-wrapper {
-    width: 100%;
-    max-height: 400px;        /* 🔥 controls vertical height */
-    overflow-y: auto;         /* 🔥 vertical scroll */
-    overflow-x: auto;         /* horizontal scroll if needed */
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
+/* ══════════════════════════════════════
+   VIEW MODAL
+══════════════════════════════════════ */
+#viewModal {
+  display:none; position:fixed; inset:0; z-index:10000;
+  background:rgba(0,0,0,0.5);
+  align-items:center; justify-content:center;
 }
-
-/* ================= TABLE ================= */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 1000px;
+#viewModal.open { display:flex; }
+.view-modal-box {
+  background:#fff; border-radius:16px; padding:32px;
+  width:520px; max-width:96vw; max-height:92vh; overflow-y:auto;
+  box-shadow:0 24px 64px rgba(0,0,0,0.3);
 }
+.view-modal-box .modal-header { margin-bottom:24px; }
+.view-modal-box .modal-header h3 { font-size:19px; font-weight:700; color:#2C3F51; margin:0; }
 
-/* ================= HEADER FIX (STICKY) ================= */
-thead th {
-    position: sticky;
-    top: 0;
-    background-color: #354A5E;
-    color: #fff;
-    z-index: 5;
+.mode-badge {
+  display:inline-block; padding:3px 12px; border-radius:20px;
+  font-size:12px; font-weight:700; letter-spacing:.3px;
 }
+.mode-badge.issue    { background:#dcfce7; color:#15803d; }
+.mode-badge.existing { background:#dbeafe; color:#1d4ed8; }
 
-/* ================= CELLS ================= */
-th, td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #e5e7eb;
-    text-align: center;
-    background: #fff;
+.view-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:0;
+  border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;
 }
-
-/* ================= INPUTS ================= */
-input, select {
-    width: 100%;
-    padding: 7px 10px;
-    border-radius: 6px;
-    border: 1px solid #d1d5db;
+.view-row { display:contents; }
+.view-label, .view-value {
+  padding:11px 16px; border-bottom:1px solid #f3f4f6; font-size:14px;
 }
-
-/* ================= DELETE BUTTON ================= */
-.btn-delete {
-    background: #dc2626;
-    color: #fff;
-    border: none;
-    border-radius: 7px;
-    padding: 6px 12px;
-    cursor: pointer;
+.view-label {
+  background:#f9fafb; color:#6b7280; font-weight:600; font-size:12px;
+  text-transform:uppercase; letter-spacing:.4px;
 }
+.view-value { background:#fff; color:#111827; font-weight:500; }
+.view-row:last-child .view-label,
+.view-row:last-child .view-value { border-bottom:none; }
 
-/* ================= SUBMIT ================= */
-.btn-submit {
-    margin-top: 20px;
-    background: #15803d;
-    color: #fff;
-    padding: 10px 24px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    float: right;
+.view-amount-row .view-label { background:#eff6ff; color:#1d4ed8; }
+.view-amount-row .view-value { background:#eff6ff; color:#1d4ed8; font-size:18px; font-weight:800; }
+
+.view-section {
+  grid-column:span 2;
+  background:#354A5E; color:#fff;
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.6px; padding:8px 16px;
 }
-
-/* ================= PLACEHOLDER ================= */
-.placeholder-text {
-    color: #9ca3af;
-    font-style: italic;
-}
-
-
-
-.table-wrapper {
-    box-shadow: inset 0 -15px 15px -10px rgba(0,0,0,0.15),
-                inset 0 15px 15px -10px rgba(0,0,0,0.1);
-}
-
-
-
+.view-close-footer { display:flex; justify-content:flex-end; margin-top:22px; }
+.btn-view-close { background:#354A5E; color:#fff; border:none; padding:10px 26px; border-radius:8px; cursor:pointer; font-weight:600; width:auto; }
 </style>
 
 <form method="POST">
 {% csrf_token %}
 
 <div class="card-box">
-    <div class="header-bar">
-        <h2>Add Record</h2>
-        <button type="button" class="btn-add" onclick="addPaymentRow()">➕ Add New</button>
-    </div>
-
-    <div class="table-wrapper">
-        <table id="paymentTable">
-            <thead>
-                <tr>
-                    <th>Mode</th>
-                    <th>Gen No</th>
-                    <th>Name</th>
-                    <th>Ref ID</th>
-                    <th>Type</th>
-                    
-                    <th>Cash</th>
-                    <th>Bank1</th>
-                    <th>Bank2</th>
-                    <th>Adj</th>
-                    <th class="opening-balance-header" style="display:none;">Opening Balance</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
+  <div class="header-bar">
+    <h2>Add Record</h2>
+    <button type="button" class="btn-add" onclick="openModal()">➕ Add New</button>
+  </div>
+  <div class="table-wrapper">
+    <table id="paymentTable">
+      <thead>
+        <tr>
+          <th>Mode</th>
+          <th>Gen No</th>
+          <th>Name</th>
+          <th>Ref ID</th>
+          <th>Type</th>
+          <th>Cash</th>
+          <th>Bank1</th>
+          <th>Bank2</th>
+          <th>Adj</th>
+          <th class="ob-header" style="display:none;">Opening Balance</th>
+          <th>Amount</th>
+          <th>Date</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
 
 <button type="submit" class="btn-submit">💾 Submit</button>
 </form>
 
+<!-- ADD MODAL -->
+<div id="rowModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>➕ Add New Record</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-grid">
+
+      <div class="modal-section-title">Member Details</div>
+
+      <div class="modal-field">
+        <label>Mode <span style="color:red">*</span></label>
+        <select id="m_mode">
+          <option value="">-- Select Mode --</option>
+          <option value="issue">Issue New</option>
+          <option value="existing">Manage Existing</option>
+        </select>
+      </div>
+
+      <div class="modal-field">
+        <label>Gen No <span style="color:red">*</span></label>
+        <input id="m_gen" placeholder="Type to search..." autocomplete="off">
+      </div>
+
+      <div class="modal-field">
+        <label>Name <span style="color:red">*</span></label>
+        <input id="m_name" placeholder="Type to search..." autocomplete="off">
+      </div>
+
+      <div class="modal-field" id="m_refId_wrap">
+        <label>Ref ID</label>
+        <input  id="m_loan_input"  placeholder="Auto Generated (Optional)" style="display:block;">
+        <select id="m_loan_select" style="display:none;"><option value="">-- Select Loan --</option></select>
+      </div>
+
+      <div class="modal-section-title">Loan Details</div>
+
+      <div class="modal-field">
+        <label>Type <span style="color:red">*</span></label>
+        <select id="m_type">
+          <option value="">-- Select --</option>
+        </select>
+      </div>
+
+      <div class="modal-field">
+        <label>Date <span style="color:red">*</span></label>
+        <input id="m_date" type="date">
+      </div>
+
+      <div class="modal-section-title">Amount Breakdown</div>
+
+      <div class="modal-field">
+        <label>Cash</label>
+        <input id="m_cash" class="m_amt" type="number" value="0" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Bank 1</label>
+        <input id="m_bank1" class="m_amt" type="number" value="0" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Bank 2</label>
+        <input id="m_bank2" class="m_amt" type="number" value="0" min="0">
+      </div>
+      <div class="modal-field">
+        <label>Adj</label>
+        <input id="m_adj" class="m_amt" type="number" value="0">
+      </div>
+      <div class="modal-field" id="m_ob_wrap" style="display:none;">
+        <label>Opening Balance</label>
+        <input id="m_ob" class="m_amt" type="number" value="0" min="0">
+      </div>
+
+    </div>
+
+    <div class="amount-preview">
+      <span class="ap-label">Total Amount</span>
+      <span class="ap-value" id="m_total">0</span>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-modal-add" onclick="commitRow()">✔ Add to Table</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div id="viewModal">
+  <div class="view-modal-box">
+    <div class="modal-header">
+      <h3>📋 Record Details</h3>
+      <button class="modal-close" onclick="closeViewModal()">×</button>
+    </div>
+    <div class="view-grid" id="viewGrid"></div>
+    <div class="view-close-footer">
+      <button type="button" class="btn-view-close" onclick="closeViewModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
 <script>
+/* ══════════════════════════════════════
+   LOAN TYPE DEFINITIONS BY MODE
+   Each entry: { value: 'stored DB value', label: 'Display label' }
+══════════════════════════════════════ */
+const LOAN_TYPES = {
+  issue: {
+    loans: [
+      { value: 'MTL LOAN',            label: 'MTL LOAN Issue'            },
+      { value: 'FDL LOAN',            label: 'FDL LOAN Issue'            },
+      { value: 'KVP/NSC LOAN',        label: 'KVP/NSC LOAN Issue'        },
+      { value: 'FIXED DEPOSITS',      label: 'FIXED DEPOSITS Collection' },
+      { value: 'THRIFT FUNDS',        label: 'THRIFT FUNDS Collection'   },
+      { value: 'WELFARE COLLECTIONS', label: 'WELFARE COLLECTIONS Collection' },
+    ],
+    payments: [
+      { value: 'SALARY PAID',      label: 'SALARY PAID'      },
+      { value: 'OFFICE EXPENSES',  label: 'OFFICE EXPENSES'  },
+      { value: 'OTHER PAYMENTS',   label: 'OTHER PAYMENTS'   },
+    ],
+    receipts: [
+      { value: 'ADMISSION FEES',  label: 'ADMISSION FEES'  },
+      { value: 'SHARE CAPITAL',   label: 'SHARE CAPITAL'   },
+      { value: 'OTHER RECEIPTS',  label: 'OTHER RECEIPTS'  },
+    ]
+  },
+  existing: {
+    loans: [
+      { value: 'MTL LOAN',            label: 'MTL LOAN Collection'            },
+      { value: 'FDL LOAN',            label: 'FDL LOAN Collection'            },
+      { value: 'KVP/NSC LOAN',        label: 'KVP/NSC LOAN Collection'        },
+      { value: 'FIXED DEPOSITS',      label: 'FIXED DEPOSITS Refund'          },
+      { value: 'THRIFT FUNDS',        label: 'THRIFT FUNDS Refund'            },
+      { value: 'WELFARE COLLECTIONS', label: 'WELFARE COLLECTIONS Refund'     },
+    ],
+    payments: [
+      { value: 'SALARY PAID',      label: 'SALARY PAID'      },
+      { value: 'OFFICE EXPENSES',  label: 'OFFICE EXPENSES'  },
+      { value: 'OTHER PAYMENTS',   label: 'OTHER PAYMENTS'   },
+    ],
+    receipts: [
+      { value: 'ADMISSION FEES',  label: 'ADMISSION FEES'  },
+      { value: 'SHARE CAPITAL',   label: 'SHARE CAPITAL'   },
+      { value: 'OTHER RECEIPTS',  label: 'OTHER RECEIPTS'  },
+    ]
+  }
+};
+
+/* Build <option> HTML for a given mode, optionally pre-selecting a value */
+function buildTypeOptions(mode, selectedValue) {
+  if (!mode || !LOAN_TYPES[mode]) {
+    return '<option value="">-- Select Mode First --</option>';
+  }
+  const g = LOAN_TYPES[mode];
+  let html = '<option value="">-- Select --</option>';
+
+  html += '<optgroup label="Loans">';
+  g.loans.forEach(function(o) {
+    html += `<option value="${o.value}" ${o.value === selectedValue ? 'selected' : ''}>${o.label}</option>`;
+  });
+  html += '</optgroup>';
+
+  html += '<optgroup label="Payments">';
+  g.payments.forEach(function(o) {
+    html += `<option value="${o.value}" ${o.value === selectedValue ? 'selected' : ''}>${o.label}</option>`;
+  });
+  html += '</optgroup>';
+
+  html += '<optgroup label="Receipts">';
+  g.receipts.forEach(function(o) {
+    html += `<option value="${o.value}" ${o.value === selectedValue ? 'selected' : ''}>${o.label}</option>`;
+  });
+  html += '</optgroup>';
+
+  return html;
+}
+
+/* Given a stored value and mode, return the display label */
+function getLoanLabel(mode, value) {
+  if (!mode || !LOAN_TYPES[mode] || !value) return value || '—';
+  const all = [
+    ...LOAN_TYPES[mode].loans,
+    ...LOAN_TYPES[mode].payments,
+    ...LOAN_TYPES[mode].receipts
+  ];
+  const found = all.find(function(o) { return o.value === value; });
+  return found ? found.label : value;
+}
+
+/* ══════════════════════════════════════
+   UTILS
+══════════════════════════════════════ */
 function today() {
-    return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0];
 }
 
-/* ================= VALIDATION ================= */
-function areAllRowsComplete() {
-    let valid = true;
-
-    $('#paymentTable tbody tr').each(function () {
-        const $row = $(this);
-
-        const mode = $row.find('.modeSelect').val();
-        const gen = $row.find('.genInput').val().trim();
-        const name = $row.find('.nameInput').val().trim();
-        const loanType = $row.find('.loanType').val();
-        const date = $row.find('input[type="date"]').val();
-
-        let loanIdOk = true;
-
-        if (mode === 'existing') {
-            loanIdOk = !!$row.find('.loanSelect').val();
-        }
-
-        if (!mode || !gen || !name || !loanType || !date || !loanIdOk) {
-            valid = false;
-            return false;
-        }
-    });
-
-    return valid;
+/* ══════════════════════════════════════
+   MODAL — RECALC TOTAL
+══════════════════════════════════════ */
+function recalcModal() {
+  const total = ['m_cash','m_bank1','m_bank2','m_adj','m_ob']
+    .reduce(function(s, id) { return s + (+$('#'+id).val() || 0); }, 0);
+  $('#m_total').text(total);
 }
+$(document).on('input', '.m_amt', recalcModal);
 
-/* ================= AUTOCOMPLETE ================= */
-function setupAutocomplete($row) {
-    const $gen = $row.find('.genInput');
-    const $name = $row.find('.nameInput');
-
-    $gen.autocomplete({
-        source: function (req, res) {
-            $.getJSON("/api/users-autocomplete/", { term: req.term }, function (data) {
-                res($.map(data, function (item) {
-                    return {
-                        label: item.code + " - " + item.name,
-                        value: item.code,
-                        name: item.name
-                    };
-                }));
-            });
-        },
-        minLength: 0,
-        select: function (e, ui) {
-            $gen.val(ui.item.value);
-            $name.val(ui.item.name);
-            loadActiveLoans($row);
-            return false;
-        }
-    }).focus(function () {
-        $(this).autocomplete("search", $(this).val());
-    });
-
-    $name.autocomplete({
-        source: "/api/users-autocomplete/",
-        minLength: 1,
-        select: function (e, ui) {
-            $name.val(ui.item.name);
-            $gen.val(ui.item.code);
-            loadActiveLoans($row);
-            return false;
-        }
-    });
-}
-
-/* ================= AMOUNT ================= */
+/* ══════════════════════════════════════
+   TABLE ROW — RECALC AMOUNT
+══════════════════════════════════════ */
 function recalcAmount($row) {
-    const total =
-        (+$row.find('.cash').val() || 0) +
-        (+$row.find('.bank1').val() || 0) +
-        (+$row.find('.bank2').val() || 0) +
-        (+$row.find('.adj').val() || 0) +
-        (+$row.find('.opening_balance').val() || 0);
-
-    $row.find('.amount').val(total);
+  const total =
+    (+$row.find('.cash').val()            || 0) +
+    (+$row.find('.bank1').val()           || 0) +
+    (+$row.find('.bank2').val()           || 0) +
+    (+$row.find('.adj').val()             || 0) +
+    (+$row.find('.opening_balance').val() || 0);
+  $row.find('.amount').val(total);
 }
 
-/* ================= LOAD ACTIVE LOANS ================= */
-function loadActiveLoans($row) {
-    const genNo = $row.find('.genInput').val().trim();
-    const $loanSelect = $row.find('.loanSelect');
-    const $loanType = $row.find('.loanType');
+/* ══════════════════════════════════════
+   ADD MODAL — OPEN / CLOSE
+══════════════════════════════════════ */
+function openModal() {
+  $('#m_mode').val('').prop('disabled', false);
+  $('#m_gen,#m_name').val('');
+  $('#m_loan_input').val('').show();
+  $('#m_loan_select').html('<option value="">-- Select Loan --</option>').hide();
+  $('#m_type').html('<option value="">-- Select Mode First --</option>').prop('disabled', false);
+  $('#m_date').val(today());
+  $('#m_cash,#m_bank1,#m_bank2,#m_adj,#m_ob').val('0');
+  $('#m_ob_wrap').hide();
+  recalcModal();
+  $('#rowModal').addClass('open');
+  setTimeout(function() { $('#m_mode').focus(); }, 100);
+}
+function closeModal() { $('#rowModal').removeClass('open'); }
 
-    if (!genNo || !$loanSelect.length) return;
+$('#rowModal').on('click', function(e) { if (e.target===this) closeModal(); });
+$(document).on('keydown', function(e) { if (e.key==='Escape') { closeModal(); closeViewModal(); } });
 
-    $.getJSON("/api/active-loans/", { gen_no: genNo, table: 'payments' }, function (data) {
-        $loanSelect.html('<option value="">-- Select Loan --</option>');
-        data.forEach(function (loan) {
-            $loanSelect.append(
-                `<option value="${loan.code}" data-type="${loan.type}">
-                    ${loan.code} (${loan.type})
-                </option>`
-            );
-        });
+/* ══════════════════════════════════════
+   ADD MODAL — MODE CHANGE
+══════════════════════════════════════ */
+$('#m_mode').on('change', function () {
+  const mode = this.value;
 
-        $loanSelect.off('change').on('change', function () {
-            $loanType.val($(this).find(':selected').data('type') || '');
-        });
+  // Rebuild type dropdown for the selected mode
+  $('#m_type').html(buildTypeOptions(mode, '')).prop('disabled', false);
+
+  if (mode === 'issue') {
+    $('#m_loan_input').show();
+    $('#m_loan_select').hide().val('');
+    $('#m_ob_wrap').show();
+  } else if (mode === 'existing') {
+    $('#m_loan_input').hide();
+    $('#m_loan_select').show();
+    $('#m_ob_wrap').hide();
+    $('#m_ob').val('0');
+    loadModalLoans();
+  } else {
+    $('#m_loan_input').show();
+    $('#m_loan_select').hide().val('');
+    $('#m_ob_wrap').hide();
+  }
+  recalcModal();
+});
+
+/* ══════════════════════════════════════
+   ADD MODAL — AUTOCOMPLETE GEN NO
+══════════════════════════════════════ */
+$('#m_gen').autocomplete({
+  source: function (req, res) {
+    $.getJSON('/api/users-autocomplete/', { term: req.term }, function (data) {
+      res($.map(data, function (item) {
+        return { label: item.code + '  —  ' + item.name, value: item.code, name: item.name };
+      }));
     });
+  },
+  minLength: 0,
+  select: function (e, ui) {
+    $('#m_gen').val(ui.item.value);
+    $('#m_name').val(ui.item.name);
+    if ($('#m_mode').val() === 'existing') loadModalLoans();
+    return false;
+  }
+}).on('focus', function () { $(this).autocomplete('search', $(this).val()); });
 
+/* ══════════════════════════════════════
+   ADD MODAL — AUTOCOMPLETE NAME
+══════════════════════════════════════ */
+$('#m_name').autocomplete({
+  source: function (req, res) {
+    $.getJSON('/api/users-autocomplete/', { term: req.term }, function (data) {
+      res($.map(data, function (item) {
+        return { label: item.code + '  —  ' + item.name, value: item.name, code: item.code };
+      }));
+    });
+  },
+  minLength: 1,
+  select: function (e, ui) {
+    $('#m_name').val(ui.item.value);
+    $('#m_gen').val(ui.item.code);
+    if ($('#m_mode').val() === 'existing') loadModalLoans();
+    return false;
+  }
+});
 
-    $.getJSON("/api/active-loans/", { gen_no: genNo, table: 'payments' }, function (data) {
-    $loanSelect.html('<option value="">-- Select Loan --</option>');
+/* ══════════════════════════════════════
+   ADD MODAL — LOAD LOANS
+══════════════════════════════════════ */
+function loadModalLoans() {
+  const genNo = $('#m_gen').val().trim();
+  const $sel  = $('#m_loan_select');
+  const $type = $('#m_type');
+  if (!genNo) { $sel.html('<option value="">-- Enter Gen No first --</option>'); return; }
+  $sel.html('<option value="">Loading...</option>');
+  $.getJSON('/api/active-loans/', { gen_no: genNo, table: 'payments' }, function (data) {
+    $sel.html('<option value="">-- Select Loan --</option>');
+    if (!data.length) { $sel.html('<option value="">No active loans found</option>'); return; }
     data.forEach(function (loan) {
-        $loanSelect.append(
-            `<option value="${loan.code}" data-type="${loan.type}">
-                ${loan.code} (${loan.type})
-            </option>`
-        );
+      $sel.append(`<option value="${loan.code}" data-type="${loan.type}">${loan.code} (${loan.type})</option>`);
     });
-
-    // When loan is selected
-    $loanSelect.off('change').on('change', function () {
-        const selectedType = $(this).find(':selected').data('type') || '';
-        $loanType.val(selectedType);
-
-        if (selectedType) {
-            // 🔒 disable loan type dropdown for existing loan
-            $loanType.prop('disabled', true);
-        } else {
-            $loanType.prop('disabled', false);
-        }
+    $sel.off('change').on('change', function () {
+      const rawType = $(this).find(':selected').data('type') || '';
+      // Find matching label for 'existing' mode
+      const label = getLoanLabel('existing', rawType);
+      $type.val(rawType).prop('disabled', !!rawType);
     });
-
-    // If a loan is already pre-selected (like editing row)
-    const preSelected = $loanSelect.val();
-    if (preSelected) {
-        $loanType.prop('disabled', true);
-    }
-});
+  }).fail(function () { $sel.html('<option value="">Error loading loans</option>'); });
 }
 
-/* ================= ADD ROW ================= */
-function addPaymentRow() {
+/* ══════════════════════════════════════
+   ADD MODAL — COMMIT ROW
+══════════════════════════════════════ */
+function commitRow() {
+  const mode     = $('#m_mode').val();
+  const gen      = $('#m_gen').val().trim();
+  const name     = $('#m_name').val().trim();
+  const loanType = $('#m_type').val();
+  const date     = $('#m_date').val();
+  const cash     = $('#m_cash').val()  || '0';
+  const bank1    = $('#m_bank1').val() || '0';
+  const bank2    = $('#m_bank2').val() || '0';
+  const adj      = $('#m_adj').val()   || '0';
+  const ob       = $('#m_ob').val()    || '0';
+  const loanId   = mode === 'existing' ? $('#m_loan_select').val() : $('#m_loan_input').val();
 
-    if (!areAllRowsComplete()) {
-        alert("Please fill all fields in existing rows before adding a new one.");
-        return;
-    }
+  if (!mode)     { alert('Please select a Mode.');      return; }
+  if (!gen)      { alert('Please enter Gen No.');       return; }
+  if (!name)     { alert('Please enter Name.');         return; }
+  if (!loanType) { alert('Please select a Loan Type.'); return; }
+  if (!date)     { alert('Please select a Date.');      return; }
+  if (mode === 'existing' && !loanId) { alert('Please select a Loan.'); return; }
 
-    const row = $(`
-<tr>
-    <td>
-        <select name="mode[]" class="modeSelect" required>
-            <option value="">-- Select Mode --</option>
-            <option value="issue">Issue New</option>
-            <option value="existing">Manage Existing</option>
-        </select>
-    </td>
-    <td><input name="gen_no[]" class="genInput"></td>
-    <td><input name="name[]" class="nameInput"></td>
-    <td class="loanIdCell"><span class="placeholder-text">Select Mode</span></td>
-    <td>
-        <select name="loan_type[]" class="loanType">
-<option value="">-- Select --</option>
+  if (mode === 'issue') $('.ob-header').show();
 
-<!-- 🟢 LOANS -->
-<option>MTL LOAN</option>
-<option>FDL LOAN</option>
-<option>KVP/NSC LOAN</option>
-<option>THRIFT FUNDS</option>
-<option>FIXED DEPOSITS</option>
-<option>WELFARE COLLECTIONS</option>
+  // Ref ID cell
+  let refCellHtml;
+  if (mode === 'issue') {
+    refCellHtml = `<input name="loan_id[]" value="${loanId}" placeholder="Auto Generated">`;
+  } else {
+    let opts = '<option value="">-- Select Loan --</option>';
+    $('#m_loan_select option').each(function () {
+      const v = $(this).val(), t = $(this).text(), dt = $(this).data('type')||'', sel = v===loanId?'selected':'';
+      if (v) opts += `<option value="${v}" data-type="${dt}" ${sel}>${t}</option>`;
+    });
+    refCellHtml = `<select name="loan_id[]" class="loanSelect" required>${opts}</select>`;
+  }
 
-<!-- 🔴 PAYMENTS -->
-<option>SALARY PAID</option>
-<option>OFFICE EXPENSES</option>
-<option>OTHER PAYMENTS</option>
+  // Opening balance cell
+  const obCell = mode === 'issue'
+    ? `<td class="openingBalanceCell"><input name="opening_balance[]" class="opening_balance" type="number" value="${ob}"></td>`
+    : `<td class="openingBalanceCell" style="display:none;"><input name="opening_balance[]" class="opening_balance" type="number" value="0"></td>`;
 
-<!-- 🟡 RECEIPTS -->
-<option>ADMISSION FEES</option>
-<option>OTHER RECEIPTS</option>
-        </select>
-    </td>
-    
-    <td><input name="cash[]" class="cash" value="0"></td>
-    <td><input name="bank1[]" class="bank1" value="0"></td>
-    <td><input name="bank2[]" class="bank2" value="0"></td>
-    <td><input name="adj[]" class="adj" value="0"></td>
-    <td class="openingBalanceCell" style="display:none;">
-    <input name="opening_balance[]" class="opening_balance" value="0">
-</td>
-    <td><input name="amount[]" class="amount" value="0" readonly></td>
-    <td><input name="date[]" type="date" value="${today()}"></td>
-    <td><button type="button" class="btn-delete" onclick="$(this).closest('tr').remove()">🗑</button></td>
-</tr>
-`);
+  // Build type dropdown for this row's mode, pre-selecting chosen value
+  const typeOpts = buildTypeOptions(mode, loanType);
 
-    row.find('.cash,.bank1,.bank2,.adj,.opening_balance')
-   .on('input', () => recalcAmount(row));
-    $('#paymentTable tbody').append(row);
-    setupAutocomplete(row);
-row.find('.modeSelect').on('change', function () {
-    const $cell = row.find('.loanIdCell');
-    const $openingCell = row.find('.openingBalanceCell');
-    const $header = $('.opening-balance-header');
+  const $row = $(`
+<tr data-mode="${mode}">
+  <td>
+    <select name="mode[]" class="modeSelect">
+      <option value="">-- Select --</option>
+      <option value="issue"    ${mode==='issue'   ?'selected':''}>Issue New</option>
+      <option value="existing" ${mode==='existing'?'selected':''}>Manage Existing</option>
+    </select>
+  </td>
+  <td><input name="gen_no[]" class="genInput"  value="${gen}"  autocomplete="off"></td>
+  <td><input name="name[]"   class="nameInput" value="${name}" autocomplete="off"></td>
+  <td class="loanIdCell">${refCellHtml}</td>
+  <td>
+    <select name="loan_type[]" class="loanType" ${mode==='existing'?'disabled':''}>
+      ${typeOpts}
+    </select>
+  </td>
+  <td><input name="cash[]"  class="cash"  type="number" value="${cash}"></td>
+  <td><input name="bank1[]" class="bank1" type="number" value="${bank1}"></td>
+  <td><input name="bank2[]" class="bank2" type="number" value="${bank2}"></td>
+  <td><input name="adj[]"   class="adj"   type="number" value="${adj}"></td>
+  ${obCell}
+  <td><input name="amount[]" class="amount" value="0" readonly></td>
+  <td><input name="date[]"   type="date"   value="${date}"></td>
+  <td>
+    <div class="action-btns">
+      <button type="button" class="btn-view"   onclick="viewRow(this)">👁 View</button>
+      <button type="button" class="btn-delete" onclick="deleteRow(this)">🗑 Delete</button>
+    </div>
+  </td>
+</tr>`);
 
-    if (this.value === 'issue') {
-        $cell.html(`<input name="loan_id[]" placeholder="Auto Generated (Optional)">`);
+  $row.find('.cash,.bank1,.bank2,.adj,.opening_balance').on('input', function() { recalcAmount($row); });
+  recalcAmount($row);
+  setupRowAutocomplete($row);
+  wireRowMode($row);
 
-        // ✅ Show Opening Balance
-        $openingCell.show();
-        $header.show();
+  if (mode === 'existing') {
+    $row.find('.loanSelect').on('change', function () {
+      const rawType = $(this).find(':selected').data('type') || '';
+      $row.find('.loanType').val(rawType).prop('disabled', !!rawType);
+    });
+  }
 
-    } else if (this.value === 'existing') {
-        $cell.html(`<select name="loan_id[]" class="loanSelect" required></select>`);
-        loadActiveLoans(row);
+  $('#paymentTable tbody').append($row);
+  closeModal();
+}
 
-        // ❌ Hide Opening Balance
-        $openingCell.hide();
+/* ══════════════════════════════════════
+   VIEW MODAL — OPEN
+══════════════════════════════════════ */
+function viewRow(btn) {
+  const $row = $(btn).closest('tr');
 
-        // Hide header ONLY if no rows using it
-        if ($('.openingBalanceCell:visible').length === 0) {
-            $header.hide();
-        }
+  const mode     = $row.find('.modeSelect').val();
+  const gen      = $row.find('.genInput').val();
+  const name     = $row.find('.nameInput').val();
+  const loanType = $row.find('.loanType').val();   // stored DB value
+  const date     = $row.find('input[type="date"]').val();
+  const cash     = $row.find('.cash').val()  || '0';
+  const bank1    = $row.find('.bank1').val() || '0';
+  const bank2    = $row.find('.bank2').val() || '0';
+  const adj      = $row.find('.adj').val()   || '0';
+  const amount   = $row.find('.amount').val() || '0';
+  const ob       = $row.find('.opening_balance').val() || '0';
 
+  // Resolve the display label for the loan type based on mode
+  const loanTypeLabel = getLoanLabel(mode, loanType);
+
+  let loanId = '';
+  const $loanSel = $row.find('.loanSelect');
+  const $loanInp = $row.find('.loanIdCell input');
+  if ($loanSel.length) loanId = $loanSel.val();
+  else if ($loanInp.length) loanId = $loanInp.val();
+  if (!loanId) loanId = '—';
+
+  const modeLabel = mode === 'issue' ? 'Issue New' : mode === 'existing' ? 'Manage Existing' : mode;
+  const modeBadge = `<span class="mode-badge ${mode}">${modeLabel}</span>`;
+  const showOb    = mode === 'issue';
+
+  const rows = [
+    { section: 'Member Details' },
+    { label: 'Mode',     value: modeBadge },
+    { label: 'Gen No',   value: gen   || '—' },
+    { label: 'Name',     value: name  || '—' },
+    { label: 'Ref ID',   value: loanId },
+    { section: 'Loan Details' },
+    { label: 'Type',     value: loanTypeLabel || '—' },
+    { label: 'Date',     value: date     || '—' },
+    { section: 'Amount Breakdown' },
+    { label: 'Cash',     value: '₹ ' + (+cash).toLocaleString()  },
+    { label: 'Bank 1',   value: '₹ ' + (+bank1).toLocaleString() },
+    { label: 'Bank 2',   value: '₹ ' + (+bank2).toLocaleString() },
+    { label: 'Adj',      value: '₹ ' + (+adj).toLocaleString()   },
+    ...(showOb ? [{ label: 'Opening Balance', value: '₹ ' + (+ob).toLocaleString() }] : []),
+    { label: 'Total Amount', value: '₹ ' + (+amount).toLocaleString(), highlight: true },
+  ];
+
+  let html = '';
+  rows.forEach(function (r) {
+    if (r.section) {
+      html += `<div class="view-section">${r.section}</div>`;
     } else {
-        $cell.html(`<span class="placeholder-text">Select Mode</span>`);
-        $openingCell.hide();
-
-        if ($('.openingBalanceCell:visible').length === 0) {
-            $header.hide();
-        }
+      const amtClass = r.highlight ? 'view-amount-row' : '';
+      html += `
+        <div class="view-row ${amtClass}">
+          <div class="view-label">${r.label}</div>
+          <div class="view-value">${r.value}</div>
+        </div>`;
     }
-});
+  });
+
+  $('#viewGrid').html(html);
+  $('#viewModal').addClass('open');
 }
 
-/* ================= INIT ================= */
-$(document).ready(function () {
-    addPaymentRow();   // ⬅ adds one empty row by default
-});
+/* ══════════════════════════════════════
+   VIEW MODAL — CLOSE
+══════════════════════════════════════ */
+function closeViewModal() { $('#viewModal').removeClass('open'); }
+$('#viewModal').on('click', function(e) { if (e.target===this) closeViewModal(); });
+
+/* ══════════════════════════════════════
+   DELETE ROW
+══════════════════════════════════════ */
+function deleteRow(btn) {
+  $(btn).closest('tr').remove();
+  checkObHeader();
+}
+
+/* ══════════════════════════════════════
+   TABLE ROW — AUTOCOMPLETE
+══════════════════════════════════════ */
+function setupRowAutocomplete($row) {
+  const $gen  = $row.find('.genInput');
+  const $name = $row.find('.nameInput');
+
+  $gen.autocomplete({
+    source: function (req, res) {
+      $.getJSON('/api/users-autocomplete/', { term: req.term }, function (data) {
+        res($.map(data, function (item) {
+          return { label: item.code + '  —  ' + item.name, value: item.code, name: item.name };
+        }));
+      });
+    },
+    minLength: 0,
+    select: function (e, ui) {
+      $gen.val(ui.item.value); $name.val(ui.item.name);
+      loadActiveLoans($row); return false;
+    }
+  }).on('focus', function () { $(this).autocomplete('search', $(this).val()); });
+
+  $name.autocomplete({
+    source: function (req, res) {
+      $.getJSON('/api/users-autocomplete/', { term: req.term }, function (data) {
+        res($.map(data, function (item) {
+          return { label: item.code + '  —  ' + item.name, value: item.name, code: item.code };
+        }));
+      });
+    },
+    minLength: 1,
+    select: function (e, ui) {
+      $name.val(ui.item.value); $gen.val(ui.item.code);
+      loadActiveLoans($row); return false;
+    }
+  });
+}
+
+/* ══════════════════════════════════════
+   TABLE ROW — LOAD LOANS
+══════════════════════════════════════ */
+function loadActiveLoans($row) {
+  const genNo    = $row.find('.genInput').val().trim();
+  const $loanSel = $row.find('.loanSelect');
+  const $type    = $row.find('.loanType');
+  if (!genNo || !$loanSel.length) return;
+  $.getJSON('/api/active-loans/', { gen_no: genNo, table: 'payments' }, function (data) {
+    $loanSel.html('<option value="">-- Select Loan --</option>');
+    data.forEach(function (loan) {
+      $loanSel.append(`<option value="${loan.code}" data-type="${loan.type}">${loan.code} (${loan.type})</option>`);
+    });
+    $loanSel.off('change').on('change', function () {
+      const rawType = $(this).find(':selected').data('type') || '';
+      $type.val(rawType).prop('disabled', !!rawType);
+    });
+    if ($loanSel.val()) $type.prop('disabled', true);
+  });
+}
+
+/* ══════════════════════════════════════
+   TABLE ROW — WIRE MODE SELECT
+   When the mode changes in-row, rebuild the type dropdown
+   and toggle the Ref ID cell + OB cell accordingly.
+══════════════════════════════════════ */
+function wireRowMode($row) {
+  $row.find('.modeSelect').on('change', function () {
+    const newMode = this.value;
+    const $cell   = $row.find('.loanIdCell');
+    const $obCell = $row.find('.openingBalanceCell');
+    const $type   = $row.find('.loanType');
+
+    // Rebuild type dropdown for the newly selected mode
+    $type.html(buildTypeOptions(newMode, '')).prop('disabled', false);
+    $row.attr('data-mode', newMode);
+
+    if (newMode === 'issue') {
+      $cell.html(`<input name="loan_id[]" placeholder="Auto Generated (Optional)">`);
+      $obCell.show(); $('.ob-header').show();
+    } else if (newMode === 'existing') {
+      $cell.html(`<select name="loan_id[]" class="loanSelect" required><option value="">-- Select Loan --</option></select>`);
+      // Wire the new loan select → type
+      $cell.find('.loanSelect').on('change', function () {
+        const rawType = $(this).find(':selected').data('type') || '';
+        $type.val(rawType).prop('disabled', !!rawType);
+      });
+      loadActiveLoans($row);
+      $obCell.hide(); checkObHeader();
+    } else {
+      $cell.html(`<span class="placeholder-text">Select Mode</span>`);
+      $obCell.hide(); checkObHeader();
+    }
+  });
+}
+
+/* ══════════════════════════════════════
+   HELPER — OB header visibility
+══════════════════════════════════════ */
+function checkObHeader() {
+  if ($('.openingBalanceCell:visible').length === 0) $('.ob-header').hide();
+}
 </script>
 
 {% endblock %}

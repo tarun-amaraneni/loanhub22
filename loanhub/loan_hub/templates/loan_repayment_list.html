@@ -2,301 +2,342 @@
 {% block content %}
 
 <style>
-
+    /* 🔥 EXACT SAME FIX AS WORKING PAGE */
+    .main-content {
+        height: auto !important;
+        overflow: visible !important;
+    }
 
     html, body {
-    height: auto !important;
-    min-height: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-}
+        height: auto;
+        overflow-y: auto;
+    }
 
-body {
-    display: block !important;
-}
+    /* ===== BUTTONS ===== */
+    .mtl-btn-blue {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        background: #2563eb;
+        color: #fff;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .mtl-btn-blue:hover { background: #1d4ed8; }
 
-/* ===== PAGE WRAPPER FOR SCROLL ===== */
-.page-wrapper {
-    min-height:100vh;
-    padding:20px;
-}
+    .mtl-btn-green {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        background: #16a34a;
+        color: #fff;
+    }
+    .mtl-btn-green:hover { background: #15803d; }
 
-/* ================= BUTTONS ================= */
-.view-btn, .save-btn, .delete-btn {
-    padding:6px 14px;
-    border-radius:8px;
-    border:none;
-    font-weight:600;
-    cursor:pointer;
-}
+    .mtl-btn-red {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        background: #dc2626;
+        color: #fff;
+    }
+    .mtl-btn-red:hover { background: #b91c1c; }
 
-.view-btn { background:#2563eb; color:#fff; }
-.view-btn:hover { background:#1d4ed8; }
-.save-btn { background:#16a34a; color:#fff; }
-.delete-btn { background:#dc2626; color:#fff; }
+    /* ===== PAGE WRAPPER ===== */
+    .mtl-wrapper {
+        padding: 20px 30px 60px 30px;
+        font-family: Arial, sans-serif;
+        background: #f5f5f5;
+        min-height: 100vh;
+    }
 
-/* ================= HEADER ================= */
-.page-header {
-    background:linear-gradient(135deg,#1e3a8a,#2563eb);
-    color:#fff;
-    padding:6px 8px;
-    border-radius:10px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin:15px 0 6px 0;
-}
+    /* ===== LOAN HEADER BAR ===== */
+    .mtl-loan-header {
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 18px 0 8px 0;
+    }
 
-.header-inline {
-    display:flex;
-    align-items:center;
-    gap:7px;
-}
+    .mtl-loan-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
 
-.header-inline h2 {
-    margin:0;
-    font-size:12px;
-    font-weight:300;
-}
+    .mtl-loan-type { margin: 0; font-size: 13px; font-weight: 400; }
+    .mtl-divider { opacity: .5; }
 
-.meta-badge {
-    background:rgba(255,255,255,0.2);
-    padding:3px 8px;
-    border-radius:10px;
-    font-size:13px;
-}
+    .mtl-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 13px;
+    }
 
-.divider { opacity:.6; }
+    /* ===== CARD ===== */
+    .mtl-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    }
 
-/* ================= TABLE ================= */
-.table-container1 {
-    background:#fff;
-    border-radius:7px;
-    box-shadow:0 3px 8px rgba(0,0,0,.08);
-    overflow-x:auto;   /* horizontal scroll if needed */
-}
+    /* ===== TABLE WRAPPER — scrollable internally ===== */
+    .mtl-table-wrapper {
+        width: 100%;
+        max-height: 500px;
+        overflow-y: auto;
+        overflow-x: auto;
+    }
 
-.styled-table {
-    width:100%;
-    border-collapse:collapse;
-    min-width:800px;   /* prevents squeezing */
-}
+    .mtl-table-wrapper::-webkit-scrollbar { width: 6px; }
+    .mtl-table-wrapper::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 10px;
+    }
 
-.styled-table thead { background:#f1f5f9; }
+    /* ===== TABLE ===== */
+    .mtl-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 820px;
+    }
 
-.styled-table th,
-.styled-table td {
-    padding:7px;
-    font-size:12px;
-}
+    .mtl-table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #354A5E;
+        color: #fff;
+        z-index: 10;
+        padding: 10px 8px;
+        text-align: center;
+        font-size: 12px;
+    }
 
-.styled-table th {
-    text-align:center;
-    font-weight:500;
-}
+    .mtl-table td {
+        padding: 9px 8px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: center;
+        font-size: 12px;
+    }
 
-.styled-table td:nth-child(1),
-.styled-table td:nth-child(2),
-.styled-table td:nth-child(3) { text-align:center; }
+    .mtl-table td:nth-child(4),
+    .mtl-table td:nth-child(5),
+    .mtl-table td:nth-child(6),
+    .mtl-table td:nth-child(7),
+    .mtl-table td:nth-child(8) { text-align: right; }
 
-.styled-table td:nth-child(4),
-.styled-table td:nth-child(5),
-.styled-table td:nth-child(6),
-.styled-table td:nth-child(7) { text-align:right; }
+    .mtl-table td:last-child { text-align: center; }
 
-.styled-table td:last-child { text-align:center; }
+    .mtl-table tr:nth-child(even) { background: #f9fafb; }
+    .mtl-table tbody tr:hover { background: #e8f0fe; }
 
-.styled-table tbody tr {
-    border-bottom:1px solid #e5e7eb;
-}
+    /* ===== MODALS ===== */
+    .mtl-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
 
-.styled-table tbody tr:hover {
-    background:#f8fafc;
-}
+    .mtl-modal-box {
+        background: #fff;
+        width: 420px;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
 
-/* ================= MODALS ================= */
-.modal-overlay {
-    display:none;
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,.55);
-    z-index:2000;
-    align-items:center;
-    justify-content:center;
-}
+    .mtl-modal-box h3 {
+        text-align: center;
+        margin-bottom: 12px;
+        font-size: 16px;
+        color: #1e293b;
+    }
 
-.modal-box {
-    background:#fff;
-    width:400px;
-    padding:15px;
-    border-radius:8px;
-    box-shadow:0 10px 20px rgba(0,0,0,.25);
-}
+    .mtl-modal-box label {
+        display: block;
+        margin-top: 10px;
+        font-size: 13px;
+        color: #475569;
+    }
 
-.modal-box h3 {
-    text-align:center;
-    margin-bottom:10px;
-}
+    .mtl-modal-box input {
+        width: 100%;
+        margin-top: 4px;
+        padding: 7px 10px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+        text-align: right;
+        box-sizing: border-box;
+        font-size: 13px;
+    }
 
-.modal-box label {
-    display:block;
-    margin-top:8px;
-}
+    .mtl-modal-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 18px;
+    }
 
-.modal-box input {
-    width:100%;
-    margin-top:3px;
-    padding:6px;
-    border-radius:4px;
-    border:1px solid #ddd;
-    text-align:right;
-}
-
-.modal-actions {
-    display:flex;
-    justify-content:space-between;
-    margin-top:15px;
-}
-
-.delete-warning {
-    text-align:center;
-    margin:10px 0;
-}
+    .mtl-delete-warning {
+        text-align: center;
+        margin: 12px 0;
+        color: #64748b;
+        font-size: 14px;
+    }
 </style>
 
-<div class="page-wrapper">
+<div class="mtl-wrapper">
 
-<h2 style="margin-bottom:20px;">
-    All Loan Transactions — GEN No: {{ gen_no }}
-</h2>
+    <h3 style="margin-bottom: 25px; font-weight: 600; color: #333;">
+        All Loan Transactions — GEN No: {{ gen_no }}
+    </h3>
 
-{% for item in loan_data %}
+    {% for item in loan_data %}
 
-<div class="page-header">
-    <div class="header-inline">
-        <h2>{{ item.loan.type_of_loan }}</h2>
-        <span class="divider">|</span>
-        <span class="meta-badge">Loan Code: {{ item.loan.code }}</span>
-        <span class="meta-badge">Amount: {{ item.loan.amount }}</span>
+    <div class="mtl-loan-header">
+        <div class="mtl-loan-header-left">
+            <span class="mtl-loan-type">{{ item.loan.type_of_loan }}</span>
+            <span class="mtl-divider">|</span>
+            <span class="mtl-badge">Loan Code: {{ item.loan.code }}</span>
+            <span class="mtl-badge">Name: {{ item.loan.name }}</span>
+            <span class="mtl-badge">Amount: {{ item.loan.amount }}</span>
+        </div>
+        <a href="{% url 'loans' %}?gen_no={{ gen_no }}" class="mtl-btn-blue">⬅ Back</a>
     </div>
 
-    <a href="{% url 'loans' %}?gen_no={{ gen_no }}" class="view-btn">
-        ⬅ Back
-    </a>
+    <div class="mtl-card">
+        <div class="mtl-table-wrapper">
+            <table class="mtl-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Txn ID</th>
+                        <th>Type</th>
+                        <th>Cash</th>
+                        <th>Bank 1</th>
+                        <th>Bank 2</th>
+                        <th>Adjustment</th>
+                        <th>Opening Balance</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in item.repayments %}
+                    <tr>
+                        <td>{{ r.created_at|date:"d-m-Y" }}</td>
+                        <td>{{ r.code }}</td>
+                        <td>{{ item.loan.type_of_loan }}</td>
+                        <td>{{ r.cash }}</td>
+                        <td>{{ r.bank1 }}</td>
+                        <td>{{ r.bank2 }}</td>
+                        <td>{{ r.adj }}</td>
+                        <td>{{ r.opening_balance }}</td>
+                        <td>
+                            <button type="button" class="mtl-btn-blue"
+                                onclick="openEditModal('{{ r.code }}','{{ r.cash }}','{{ r.bank1 }}','{{ r.bank2 }}','{{ r.adj }}','{{ r.opening_balance }}')">
+                                ✏️
+                            </button>
+                            <button type="button" class="mtl-btn-red"
+                                onclick="openDeleteModal('{{ r.code }}')">
+                                🗑
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" style="text-align:center; padding:16px; color:#94a3b8;">
+                            No transactions found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% endfor %}
+
 </div>
 
-<div class="table-container1">
-<table class="styled-table">
-<thead>
-<tr>
-    <th>Date</th>
-    <th>Txn ID</th>
-    <th>Type</th>
-    <th>Cash</th>
-    <th>Bank 1</th>
-    <th>Bank 2</th>
-    <th>Adjustment</th>
-    <th>Opening Balance</th>
-    <th>Actions</th>
-</tr>
-</thead>
-
-<tbody>
-{% for r in item.repayments %}
-<tr>
-    <td>{{ r.created_at|date:"d-m-Y" }}</td>
-    <td>{{ r.code }}</td>
-    <td>{{ item.loan.type_of_loan }}</td>
-    <td>{{ r.cash }}</td>
-    <td>{{ r.bank1 }}</td>
-    <td>{{ r.bank2 }}</td>
-    <td>{{ r.adj }}</td>
-    <td>{{ r.opening_balance }}</td>
-    <td>
-        <button type="button" class="view-btn"
-            onclick="openEditModal('{{ r.code }}','{{ r.cash }}','{{ r.bank1 }}','{{ r.bank2 }}','{{ r.adj }}','{{ r.opening_balance }}')">
-            ✏️
-        </button>
-
-        <button type="button" class="view-btn delete-btn"
-            onclick="openDeleteModal('{{ r.code }}')">
-            🗑
-        </button>
-    </td>
-</tr>
-{% empty %}
-<tr>
-    <td colspan="8" style="text-align:center;">No transactions found</td>
-</tr>
-{% endfor %}
-</tbody>
-</table>
-</div>
-
-{% endfor %}
-
-</div> <!-- page-wrapper -->
-
-<!-- ================= MODALS ================= -->
-
-<div id="editModal" class="modal-overlay">
-    <div class="modal-box">
+<!-- ===== EDIT MODAL ===== -->
+<div id="editModal" class="mtl-modal-overlay">
+    <div class="mtl-modal-box">
         <h3>Edit Repayment</h3>
         <form method="post">
             {% csrf_token %}
-            <label>Cash</label><input id="edit_cash">
-            <label>Bank 1</label><input id="edit_bank1">
-            <label>Bank 2</label><input id="edit_bank2">
-            <label>Opening Balance</label><input id="edit_opening_balance">
-            <div class="modal-actions">
-                <button type="button" onclick="closeEditModal()" class="view-btn">Cancel</button>
-                <button type="submit" id="saveBtn" class="save-btn">Save</button>
+            <label>Cash</label>
+            <input id="edit_cash">
+            <label>Bank 1</label>
+            <input id="edit_bank1">
+            <label>Bank 2</label>
+            <input id="edit_bank2">
+            <label>Opening Balance</label>
+            <input id="edit_opening_balance">
+            <div class="mtl-modal-actions">
+                <button type="button" onclick="closeEditModal()" class="mtl-btn-blue">Cancel</button>
+                <button type="submit" id="saveBtn" class="mtl-btn-green">Save</button>
             </div>
         </form>
     </div>
 </div>
 
-<div id="deleteModal" class="modal-overlay">
-    <div class="modal-box">
+<!-- ===== DELETE MODAL ===== -->
+<div id="deleteModal" class="mtl-modal-overlay">
+    <div class="mtl-modal-box">
         <h3>Confirm Delete</h3>
-        <div class="delete-warning">Delete this transaction?</div>
+        <div class="mtl-delete-warning">Are you sure you want to delete this transaction?</div>
         <form method="post">
             {% csrf_token %}
-            <div class="modal-actions">
-                <button type="button" onclick="closeDeleteModal()" class="view-btn">Cancel</button>
-                <button type="submit" id="deleteBtn" class="delete-btn">Delete</button>
+            <div class="mtl-modal-actions">
+                <button type="button" onclick="closeDeleteModal()" class="mtl-btn-blue">Cancel</button>
+                <button type="submit" id="deleteBtn" class="mtl-btn-red">Delete</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function openEditModal(code, c, b1, b2, a, ob){
-    document.getElementById("editModal").style.display='flex';
-
+function openEditModal(code, c, b1, b2, a, ob) {
+    document.getElementById("editModal").style.display = 'flex';
     document.getElementById("edit_cash").value = c;
     document.getElementById("edit_bank1").value = b1;
     document.getElementById("edit_bank2").value = b2;
-    document.getElementById("edit_opening_balance").value = ob;  // ✅ IMPORTANT
-
+    document.getElementById("edit_opening_balance").value = ob;
     document.getElementById("edit_cash").name = 'cash_' + code;
     document.getElementById("edit_bank1").name = 'bank1_' + code;
     document.getElementById("edit_bank2").name = 'bank2_' + code;
     document.getElementById("edit_opening_balance").name = 'opening_balance_' + code;
-
     document.getElementById("saveBtn").name = 'save_' + code;
 }
-function closeEditModal(){
-    document.getElementById("editModal").style.display='none';
+
+function closeEditModal() {
+    document.getElementById("editModal").style.display = 'none';
 }
 
-function openDeleteModal(code){
-    document.getElementById("deleteModal").style.display='flex';
-    document.getElementById("deleteBtn").name='delete_'+code;
+function openDeleteModal(code) {
+    document.getElementById("deleteModal").style.display = 'flex';
+    document.getElementById("deleteBtn").name = 'delete_' + code;
 }
 
-function closeDeleteModal(){
-    document.getElementById("deleteModal").style.display='none';
+function closeDeleteModal() {
+    document.getElementById("deleteModal").style.display = 'none';
 }
 </script>
 

@@ -1,38 +1,35 @@
 {% extends 'base.html' %}
 {% block content %}
 <style>
-    /* Old .error-message is now redundant, consider removing if not used elsewhere */
     .error-message {
         color: red;
         display: none;
     }
-
-    /* Action Buttons (Save, View) - Slightly refined */
     .save-btn, .view-btn {
-        background-color: #28a745; /* Green for Save */
+        background-color: #28a745;
         border: none;
         color: white;
-        padding: 8px 15px; /* Slightly larger padding */
+        padding: 8px 15px;
         text-align: center;
         text-decoration: none;
         display: inline-block;
-        font-size: 13px; /* Slightly larger font */
+        font-size: 13px;
         margin: 4px 2px;
         cursor: pointer;
-        border-radius: 5px; /* Softer rounded corners */
+        border-radius: 5px;
         margin-left: 7%;
-        transition: background-color 0.2s ease, transform 0.2s ease; /* Smooth transitions */
-        box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
+        transition: background-color 0.2s ease, transform 0.2s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     .view-btn {
-        background-color: #007bff; /* Blue for View */
+        background-color: #007bff;
     }
     .save-btn:hover {
-        background-color: #218838; /* Darker green on hover */
-        transform: translateY(-1px); /* Slight lift */
+        background-color: #218838;
+        transform: translateY(-1px);
     }
     .view-btn:hover {
-        background-color: #0056b3; /* Darker blue on hover */
+        background-color: #0056b3;
         transform: translateY(-1px);
     }
     .submit-button:hover {
@@ -54,286 +51,212 @@
         outline: none;
         border: 2px solid #4CAF50;
     }
-
-    /* --- GOD LEVEL ALERTS --- */
     .alert {
         position: fixed;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        padding: 25px 35px; /* More generous padding */
-        border-radius: 12px; /* More rounded corners */
+        padding: 25px 35px;
+        border-radius: 12px;
         color: #fff;
         z-index: 1000;
-        font-size: 1.1rem; /* Slightly larger text */
+        font-size: 1.1rem;
         text-align: center;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2); /* Deeper shadow */
-        opacity: 0; /* Start hidden for animation */
-        visibility: hidden; /* Hide from screen readers initially */
-        transition: opacity 0.4s ease-out, transform 0.4s ease-out, visibility 0.4s ease-out; /* Smooth transitions */
-        display: flex; /* Enable flexbox for icon and text alignment */
-        align-items: center; /* Vertically center icon and text */
-        justify-content: center; /* Horizontally center content */
-        gap: 15px; /* Space between icon and text */
-        min-width: 300px; /* Ensure a decent minimum width */
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s ease-out, transform 0.4s ease-out, visibility 0.4s ease-out;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        min-width: 300px;
     }
-
-    /* Alert States */
     .alert-success {
-        background-color: #28a745; /* A standard, pleasant green */
+        background-color: #28a745;
         border: 1px solid #218838;
     }
     .alert-danger {
-        background-color: #dc3545; /* A vibrant red */
+        background-color: #dc3545;
         border: 1px solid #c82333;
     }
     .alert-warning {
-        background-color: #ffc107; /* A clear, bold yellow/orange */
-        color: #343a40; /* Dark text for contrast on yellow */
+        background-color: #ffc107;
+        color: #343a40;
         border: 1px solid #e0a800;
     }
-
-    /* Icon Styling for Alerts */
     .alert .icon {
-        font-size: 1.8rem; /* Larger icon size */
-        line-height: 1; /* Ensure icon doesn't add extra line height */
-        margin-right: -5px; /* Adjust if gap property is too much */
+        font-size: 1.8rem;
+        line-height: 1;
+        margin-right: -5px;
     }
-
-    /* Animation when active/visible */
     .alert.show {
         opacity: 1;
         visibility: visible;
-        transform: translate(-50%, -50%) scale(1); /* Return to normal scale */
+        transform: translate(-50%, -50%) scale(1);
     }
-
-    /* Keyframes for a more dynamic entry/exit (optional, but nice) */
     @keyframes fadeInScale {
-        from {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.9);
-        }
-        to {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
+        from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+        to   { opacity: 1; transform: translate(-50%, -50%) scale(1);   }
     }
     @keyframes fadeOutScale {
-        from {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-        to {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.9);
-        }
+        from { opacity: 1; transform: translate(-50%, -50%) scale(1);   }
+        to   { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
     }
+    .alert.show          { animation: fadeInScale  0.4s ease-out forwards; }
+    .alert.hide-animation{ animation: fadeOutScale 0.4s ease-in  forwards; }
 
-    /* Apply animations when the `show` class is added/removed by JS */
-    .alert.show {
-        animation: fadeInScale 0.4s ease-out forwards;
-    }
-    .alert.hide-animation { /* A class to trigger the hide animation before removal */
-        animation: fadeOutScale 0.4s ease-in forwards;
-    }
-
-
-    /* Autocomplete Suggestions - Minor refinements */
     #code_suggestions {
         background-color: #fff;
         border: 1px solid #ccc;
-        border-radius: 8px; /* Slightly more rounded */
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); /* More prominent shadow */
+        border-radius: 8px;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
         position: absolute;
         z-index: 1000;
         margin-top: 5px;
-        width: 220px; /* Slightly wider */
-        max-height: 180px; /* Taller */
+        width: 220px;
+        max-height: 180px;
         overflow-y: auto;
     }
-
     #code_suggestions option {
-        padding: 10px 12px; /* More padding */
+        padding: 10px 12px;
         background-color: #fff;
         border-bottom: 1px solid #eee;
         cursor: pointer;
         transition: background-color 0.2s ease, color 0.2s ease;
-        font-size: 0.95rem; /* Slightly larger font */
+        font-size: 0.95rem;
     }
-
     #code_suggestions option:hover {
-        background-color: #e9f0f7; /* Light blueish hover */
+        background-color: #e9f0f7;
         color: #333;
     }
+    #code_suggestions option:last-child { border-bottom: none; }
 
-    #code_suggestions option:last-child {
-        border-bottom: none;
+    .edit-btn { background-color: #ffc107; color: #343a40; }
+    .edit-btn:hover { background-color: #e0a800; }
+    .delete-btn { background-color: #dc3545; }
+    .delete-btn:hover { background-color: #bd2130; }
+
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
     }
+    .save-btn, .view-btn {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        margin: 0;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+    }
+    .save-btn, .view-btn { margin-left: 0 !important; }
 
-
-    .edit-btn {
-    background-color: #ffc107;
-    color: #343a40;
-}
-
-.edit-btn:hover {
-    background-color: #e0a800;
-}
-
-.delete-btn {
-    background-color: #dc3545;
-}
-
-.delete-btn:hover {
-    background-color: #bd2130;
-}
-
-
-/* ---------- Action Buttons Row ---------- */
-.action-buttons {
-    display: flex;
-    gap: 8px;               /* space between icons */
-    justify-content: center;
-    align-items: center;
-}
-
-/* Icon-only buttons */
-.save-btn,
-.view-btn {
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    margin: 0;              /* REMOVE spacing issues */
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-}
-
-/* Remove old margin */
-.save-btn,
-.view-btn {
-    margin-left: 0 !important;
-}
-
-
-/* Reduce space between date text and calendar icon */
-input[type="date"] {
-    padding-right: 6px;   /* default is usually 12–16px */
-}
-
-/* Chrome / Edge / Safari */
-input[type="date"]::-webkit-calendar-picker-indicator {
-    margin-left: 2px;     /* pulls icon closer */
-    padding: 0;
-}
-
-/* Optional: make icon slightly smaller */
-input[type="date"]::-webkit-calendar-picker-indicator {
-    transform: scale(0.9);
-}
-input[type="date"] {
-    padding-right: 4px;
-}
-
-input[type="date"]::-webkit-calendar-picker-indicator {
-    margin-left: 0;
-}
-
+    input[type="date"] { padding-right: 6px; }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        margin-left: 2px;
+        padding: 0;
+        transform: scale(0.9);
+    }
+    input[type="date"] { padding-right: 4px; }
+    input[type="date"]::-webkit-calendar-picker-indicator { margin-left: 0; }
 </style>
 
-
 <div class="content">
-    
+
     <form class="center-form1" method="post" action="{% url 'loans' %}">
         {% csrf_token %}
         <div>
             <input type="text" id="gen_no_input" name="gen_no" placeholder="Gen.No." class="input-box1" autocomplete="off">
-            
             <select id="code_suggestions" class="input-box1" size="5" style="display:none; position:absolute; width:200px;"></select>
-
             <button type="submit" class="submit-button" disabled>Submit</button>
         </div>
         <input type="text" name="name" placeholder="Gen_No" class="input-box1" value="{{ gen_no }}" readonly>
-        <input type="text" name="name" placeholder="Name" class="input-box1" value="{{ user_name }}" readonly>
+        <input type="text" name="name" placeholder="Name"   class="input-box1" value="{{ user_name }}" readonly>
     </form>
+
     <br><br>
-    <h3 >RECEIPTS💰</h3>
+    <h3>RECEIPTS💰</h3>
     <br>
+
     <div class="table-container1">
         <table class="styled-table">
             <thead>
                 <tr>
-                    <th >Type of Receipt</th>
-                    <th >Ref</th>
-                    <th >Balance</th>
-                    <th >Interest</th>
-                    <th style="color: yellow;" >Cash</th>
-                    <th style="color: yellow;" >Bank1</th>
-                    <th style="color: yellow;" >Bank2</th>
-                    <th style="color: yellow;">Adj</th>
-                    
-                    <th style="width:140px">Date</th>
-                     <th style="width:140px">Actions</th>
-
+                    <th>Type</th>
+                    <th>Ref</th>
+                    <th>Balance</th>
+                    <th>Interest</th>
+                    <th style="color:yellow;">Cash</th>
+                    <th style="color:yellow;">Bank1</th>
+                    <th style="color:yellow;">Bank2</th>
+                    <th style="color:yellow;">Adj</th>
+                    <th style="width:140px;">Date</th>
+                    <th style="width:140px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in loans %}
-                <tr style="background-color: #ffffff">
+                <tr style="background-color:#ffffff;">
                     <td>{{ item.loan_type }} Collection</td>
                     <td>{{ item.loan.code }}</td>
-                    <td>{% if item.balance != 0 %}{{ item.balance|floatformat:2 }}{% endif %}</td>
-                    <td>{% if item.interest != 0 %}{{ item.interest|floatformat:2 }}{% endif %}</td>
-                    {# FIX: Removed space after {% endif %} #}
-                    <td>{% if item.loan %}<input name="cash" class="editable" placeholder="Enter Amount" contenteditable="true">{% endif %}</td>
+
+                    <!-- Balance with Indian formatting -->
+                    <td>
+                        {% if item.balance != 0 %}
+                            <span class="indian-fmt" data-value="{{ item.balance }}">{{ item.balance|floatformat:2 }}</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Interest with Indian formatting -->
+                    <td>
+                        {% if item.interest != 0 %}
+                            <span class="indian-fmt" data-value="{{ item.interest }}">{{ item.interest|floatformat:2 }}</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{% if item.loan %}<input name="cash"  class="editable" placeholder="Enter Amount" contenteditable="true">{% endif %}</td>
                     <td>{% if item.loan %}<input class="editable" placeholder="Enter Amount" contenteditable="true" name="bank1">{% endif %}</td>
                     <td>{% if item.loan %}<input class="editable" placeholder="Enter Amount" contenteditable="true" name="bank2">{% endif %}</td>
                     <td>{% if item.loan %}<input class="editable" placeholder="Enter Amount" contenteditable="true" name="adj">{% endif %}</td>
 
-                   
+                    <td>
+                        <input type="date" class="editable receipt-date" value="{% now 'Y-m-d' %}">
+                    </td>
 
                     <td>
-                        <input type="date"
-                            class="editable receipt-date"
-                            value="{% now 'Y-m-d' %}">
+                        {% if item.loan %}
+                        <div class="action-buttons">
+                            <button type="button" class="save-btn" data-loan-id="{{ item.loan.id }}" title="Save">
+                                <i class="fas fa-save"></i>
+                            </button>
+                            <a href="{% url 'edit_loan' item.loan.id %}" title="Edit">
+                                <button type="button" class="view-btn edit-btn">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                            </a>
+                            <a href="{% url 'loan_repayment_list' item.loan.id %}" title="View All Loans">
+                                <button type="button" class="view-btn">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </a>
+                        </div>
+                        {% endif %}
                     </td>
-<td>
-    {% if item.loan %}
-    <div class="action-buttons">
-
-        <button type="button"
-                class="save-btn"
-                data-loan-id="{{ item.loan.id }}"
-                title="Save">
-            <i class="fas fa-save"></i>
-        </button>
-
-        <a href="{% url 'edit_loan' item.loan.id %}" title="Edit">
-            <button type="button" class="view-btn edit-btn">
-                <i class="fas fa-pen"></i>
-            </button>
-        </a>
-
-<a href="{% url 'loan_repayment_list' item.loan.id %}" title="View All Loans">
-    <button type="button" class="view-btn">
-        <i class="fas fa-eye"></i>
-    </button>
-</a>
-
-    </div>
-    {% endif %}
-</td>
-
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-<br><br>
-    <h3 >PAYMENTS💸</h3>
+
+    <br><br>
+    <h3>PAYMENTS💸</h3>
     <br>
+
     <div class="table-container2">
         <form id="newTableForm" method="post" action="{% url 'submit_new_table' %}">
             {% csrf_token %}
@@ -341,111 +264,124 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <table class="styled-table">
                 <thead>
                     <tr>
-                        
-                        <th style="color: yellow;" >Loan Type</th>
-                        <th style="color: yellow;">Ref</th>  <!-- ✅ NEW -->
-                        <th style="color: yellow;" >Cash</th>
-                       
-                        <th style="color: yellow;" >Bank1</th>
-                        <th style="color: yellow;" >Bank2</th>
-                        <th style="color: yellow;" >Adj</th>
-                        <!-- ✅ NEW -->
-                        <th style="color: yellow;" >Amount</th>
-                        
-                        <th style="color: yellow;">Date</th>
-
+                        <th style="color:yellow;">Type</th>
+                        <th style="color:yellow;">Ref</th>
+                        <th style="color:yellow;">Cash</th>
+                        <th style="color:yellow;">Bank1</th>
+                        <th style="color:yellow;">Bank2</th>
+                        <th style="color:yellow;">Adj</th>
+                        <th style="color:yellow;">Amount</th>
+                        <th style="color:yellow;">Date</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-<tbody>
-<tr>
-    <td>
-        <select name="Loan Type" class="editable">
-            <option value="">Select Loan Type</option>
-            <option value="MTL LOAN">MTL LOAN Issue</option>
-            <option value="FDL LOAN">FDL LOAN Issue</option>
-            <option value="KVP/NSC LOAN">KVP/NSC Issue</option>
-        </select>
-    </td>
-        <!-- ✅ NEW REF INPUT -->
-    <td>
-        <input type="text" class="editable" name="ref" placeholder="Loan Ref(optional)">
-    </td>
-
-    
-    <td><input type="text" class="editable" name="Cash" placeholder="Cash"></td>
-    <td><input type="text" class="editable" name="Bank1" placeholder="Bank1"></td>
-    <td><input type="text" class="editable" name="Bank2" placeholder="Bank2"></td>
-    <td><input type="text" class="editable" name="Adj" placeholder="Adj"></td>
-    
-<td><input type="text" class="editable" name="Amount" placeholder="Amount" readonly></td>
-    <td>
-        <input type="date"
-               class="editable"
-               name="date"
-               id="paymentDate">
-    </td>
-
-    <td>
-        <button type="submit" class="submit-btn">Submit</button>
-    </td>
-</tr>
-</tbody>
-
+                <tbody>
+                    <tr>
+                        <td>
+                            <select name="Loan Type" class="editable">
+                                <option value="">Select Loan Type</option>
+                                <option value="MTL LOAN">MTL LOAN Issue</option>
+                                <option value="FDL LOAN">FDL LOAN Issue</option>
+                                <option value="KVP/NSC LOAN">KVP/NSC Issue</option>
+                            </select>
+                        </td>
+                        <td><input type="text" class="editable" name="ref" placeholder="Loan Ref(optional)"></td>
+                        <td><input type="text" class="editable" name="Cash"   placeholder="Cash"></td>
+                        <td><input type="text" class="editable" name="Bank1"  placeholder="Bank1"></td>
+                        <td><input type="text" class="editable" name="Bank2"  placeholder="Bank2"></td>
+                        <td><input type="text" class="editable" name="Adj"    placeholder="Adj"></td>
+                        <td><input type="text" class="editable" name="Amount" placeholder="Amount" readonly></td>
+                        <td>
+                            <input type="date" class="editable" name="date" id="paymentDate">
+                        </td>
+                        <td>
+                            <button type="submit" class="submit-btn">Submit</button>
+                        </td>
+                    </tr>
+                </tbody>
             </table>
         </form>
     </div>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+</div><!-- end .content -->
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script>
-// Returns today's date in YYYY-MM-DD format
+
+/* ── Indian number formatter ── */
+function formatIndianNumber(value) {
+    if (value === null || value === undefined || value === "") return "0.00";
+    value = value.toString().replace(/,/g, '');
+    let num = Number(value);
+    if (isNaN(num)) return "0.00";
+    let sign = num < 0 ? "-" : "";
+    num = Math.abs(num);
+    let parts = num.toFixed(2).split(".");
+    let integerPart = parts[0];
+    let decimalPart = parts[1];
+    let last3 = integerPart.slice(-3);
+    let otherNumbers = integerPart.slice(0, -3);
+    if (otherNumbers !== "") last3 = "," + last3;
+    let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + last3;
+    return sign + formatted + "." + decimalPart;
+}
+
+/* ── Format all .indian-fmt spans on page load ── */
+function applyIndianFormatting() {
+    document.querySelectorAll('.indian-fmt').forEach(el => {
+        const raw = el.getAttribute('data-value') || '0';
+        el.innerText = formatIndianNumber(raw);
+    });
+}
+
+/* ── Returns today's date in YYYY-MM-DD ── */
 function getTodayDate() {
-    const d = new Date();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const d   = new Date();
+    const m   = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${d.getFullYear()}-${m}-${day}`;
 }
 
-$(document).ready(function() {
-    // ====================== AUTO CALCULATE PAYMENT AMOUNT ======================
+$(document).ready(function () {
 
-function calculateAmount() {
-    const cash = parseFloat($('input[name="Cash"]').val()) || 0;
-    const bank1 = parseFloat($('input[name="Bank1"]').val()) || 0;
-    const bank2 = parseFloat($('input[name="Bank2"]').val()) || 0;
-    const adj = parseFloat($('input[name="Adj"]').val()) || 0;
+    /* Apply Indian formatting to Balance / Interest cells */
+    applyIndianFormatting();
 
-const total = cash + bank1 + bank2 + adj;
-    $('input[name="Amount"]').val(total.toFixed(2));
-}
+    /* ── AUTO CALCULATE PAYMENT AMOUNT ── */
+    function calculateAmount() {
+        const cash  = parseFloat($('input[name="Cash"]').val())  || 0;
+        const bank1 = parseFloat($('input[name="Bank1"]').val()) || 0;
+        const bank2 = parseFloat($('input[name="Bank2"]').val()) || 0;
+        const adj   = parseFloat($('input[name="Adj"]').val())   || 0;
+        const total = cash + bank1 + bank2 + adj;
+        $('input[name="Amount"]').val(total.toFixed(2));
+    }
+    $('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj"]').on('input', calculateAmount);
 
-// Trigger calculation when user types
-$('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj"]').on('input', calculateAmount);
-    
-    const $input = $('#gen_no_input');
+    /* ── AUTOCOMPLETE ── */
+    const $input    = $('#gen_no_input');
     const $dropdown = $('#code_suggestions');
 
-    // ====================== Autocomplete for Gen No / Name ======================
-    function fetchUsers(query = '') {
+    function fetchUsers(query) {
         $.ajax({
             url: '{% url "search_user_codes" %}',
             data: { 'term': query },
             dataType: 'json',
-            success: function(data) {
+            success: function (data) {
                 $dropdown.empty();
                 if (data.length) {
                     data.forEach(user => {
-                        // Show both code and name in dropdown
                         $dropdown.append('<option value="' + user.code + '">' + user.code + ' - [' + user.name + ']</option>');
                     });
                     $dropdown.show();
                     $('button[type="submit"]').prop('disabled', false);
                 } else {
                     $dropdown.hide();
-                    if(query.length > 0) showAlert('No user found matching your input.', 'warning');
+                    if (query.length > 0) showAlert('No user found matching your input.', 'warning');
                     $('button[type="submit"]').prop('disabled', true);
                 }
             },
-            error: function() {
+            error: function () {
                 $dropdown.hide();
                 showAlert('An error occurred while searching. Please try again.', 'danger');
                 $('button[type="submit"]').prop('disabled', true);
@@ -453,34 +389,18 @@ $('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj
         });
     }
 
-    // Show all users when input is clicked
-    $input.on('focus', function() {
-        fetchUsers(''); // empty query returns all users
-    });
-
-    // Filter users while typing
-    $input.on('keyup', function() {
-        const query = $(this).val();
-        fetchUsers(query); // backend should filter by code OR name
-    });
-
-    // When an option is clicked
-    $dropdown.on('click', 'option', function() {
+    $input.on('focus', function ()  { fetchUsers(''); });
+    $input.on('keyup', function ()  { fetchUsers($(this).val()); });
+    $dropdown.on('click', 'option', function () {
         $input.val($(this).val());
         $dropdown.hide();
         $('button[type="submit"]').prop('disabled', false);
     });
-
-    // Hide dropdown if clicked outside
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('#gen_no_input, #code_suggestions').length) {
-            $dropdown.hide();
-        }
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('#gen_no_input, #code_suggestions').length) $dropdown.hide();
     });
-    
-    // ====================== Save Buttons for Receipts ======================
-    const saveButtons = document.querySelectorAll('.save-btn');
 
+    /* ── SAVE BUTTONS (Receipts) ── */
     function clearInputFields(row) {
         ['cash', 'bank1', 'bank2', 'adj'].forEach(name => {
             const input = row.querySelector(`input[name="${name}"]`);
@@ -499,36 +419,34 @@ $('input[name="Cash"], input[name="Bank1"], input[name="Bank2"], input[name="Adj
 
     function hideLoadingIndicator(loader) {
         loader.classList.add('hide-animation');
-        loader.addEventListener('animationend', function() { loader.remove(); }, { once: true });
+        loader.addEventListener('animationend', () => loader.remove(), { once: true });
     }
 
-    saveButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const row = this.closest('tr');
+    document.querySelectorAll('.save-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const row    = this.closest('tr');
             const loanId = this.getAttribute('data-loan-id');
 
-            const cash = row.querySelector('input[name="cash"]').value || '0';
+            const cash  = row.querySelector('input[name="cash"]').value  || '0';
             const bank1 = row.querySelector('input[name="bank1"]').value || '0';
             const bank2 = row.querySelector('input[name="bank2"]').value || '0';
-            const adj = row.querySelector('input[name="adj"]').value || '0';
-
+            const adj   = row.querySelector('input[name="adj"]').value   || '0';
 
             const dateInput = row.querySelector('input.receipt-date');
             const date = dateInput && dateInput.value ? dateInput.value : getTodayDate();
 
-if ([cash, bank1, bank2, adj].every(val => parseFloat(val) === 0)){
-    showAlert('Enter at least one value.', 'warning');
-    return;
-}
+            if ([cash, bank1, bank2, adj].every(val => parseFloat(val) === 0)) {
+                showAlert('Enter at least one value.', 'warning');
+                return;
+            }
 
             const formData = new FormData();
             formData.append('loan_id', loanId);
-            formData.append('cash', cash);
-            formData.append('bank1', bank1);
-            formData.append('bank2', bank2);
-            formData.append('adj', adj);
-            formData.append('date', date);
-            
+            formData.append('cash',    cash);
+            formData.append('bank1',   bank1);
+            formData.append('bank2',   bank2);
+            formData.append('adj',     adj);
+            formData.append('date',    date);
 
             const loader = showLoadingIndicator();
 
@@ -541,12 +459,8 @@ if ([cash, bank1, bank2, adj].every(val => parseFloat(val) === 0)){
             .then(data => {
                 hideLoadingIndicator(loader);
                 if (data.status === 'success') {
-
                     const loanType = row.querySelector('td:first-child').innerText;
-                    const cleanLoanType = loanType.replace(' Collection', '');
-
-                    showAlert(`${cleanLoanType} updated successfully!`, 'success');
-
+                    showAlert(`${loanType.replace(' Collection', '')} updated successfully!`, 'success');
                     clearInputFields(row);
                     setTimeout(() => window.location.reload(), 3000);
                 } else {
@@ -561,41 +475,35 @@ if ([cash, bank1, bank2, adj].every(val => parseFloat(val) === 0)){
         });
     });
 
-    // ====================== New Table Form ======================
+    /* ── NEW TABLE FORM (Payments) ── */
     const newTableForm = document.getElementById('newTableForm');
     if (newTableForm) {
-        newTableForm.addEventListener('submit', function(event) {
+        newTableForm.addEventListener('submit', function (event) {
             event.preventDefault();
 
             const formData = new FormData(newTableForm);
             const loanType = formData.get('Loan Type');
-            const amount = parseFloat(formData.get('Amount')) || 0;
-            const cash = parseFloat(formData.get('Cash')) || 0;
-            const bank1 = parseFloat(formData.get('Bank1')) || 0;
-            const bank2 = parseFloat(formData.get('Bank2')) || 0;
-            
-            const adj = parseFloat(formData.get('Adj')) || 0;
-            const date = formData.get('date') || getTodayDate();
+            const amount   = parseFloat(formData.get('Amount')) || 0;
+            const cash     = parseFloat(formData.get('Cash'))   || 0;
+            const bank1    = parseFloat(formData.get('Bank1'))  || 0;
+            const bank2    = parseFloat(formData.get('Bank2'))  || 0;
+            const adj      = parseFloat(formData.get('Adj'))    || 0;
+            const date     = formData.get('date') || getTodayDate();
 
-            // Validation
             if (!loanType) { showAlert("Please select a Loan Type.", "warning"); return; }
-            if (!amount) { showAlert("Please enter the Amount.", "warning"); return; }
-
-
-            if ([cash, bank1, bank2, adj].every(val => val === 0)){
+            if (!amount)   { showAlert("Please enter the Amount.", "warning");   return; }
+            if ([cash, bank1, bank2, adj].every(val => val === 0)) {
                 showAlert("Enter at least one value (Cash / Bank / Adj).", "warning");
                 return;
             }
 
-      
-
-const totalEntered = cash + bank1 + bank2 + adj;
+            const totalEntered = cash + bank1 + bank2 + adj;
             if (totalEntered !== amount) {
                 showAlert(`Amount ${amount} ≠ ${totalEntered}.`, 'warning');
                 return;
             }
 
-            formData.set('date', date); // Ensure date is included
+            formData.set('date', date);
 
             const loader = showLoadingIndicator();
 
@@ -605,15 +513,15 @@ const totalEntered = cash + bank1 + bank2 + adj;
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
             .then(res => res.json())
-        .then(data => {
-            hideLoadingIndicator(loader);
-            if (data.status === 'success') {
-                showAlert(`${loanType} submitted successfully!`, 'success');
-                setTimeout(() => window.location.reload(), 2000);
-            } else {
-                showAlert('Error: ' + data.message, 'danger');
-            }
-        })
+            .then(data => {
+                hideLoadingIndicator(loader);
+                if (data.status === 'success') {
+                    showAlert(`${loanType} submitted successfully!`, 'success');
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    showAlert('Error: ' + data.message, 'danger');
+                }
+            })
             .catch(err => {
                 hideLoadingIndicator(loader);
                 showAlert('An error occurred while adding the Loan.', 'danger');
@@ -622,26 +530,23 @@ const totalEntered = cash + bank1 + bank2 + adj;
         });
     }
 
-    // ====================== Set default date for paymentDate ======================
+    /* ── Default date for payment form ── */
     const paymentDate = document.getElementById('paymentDate');
-    if (paymentDate && !paymentDate.value) {
-        paymentDate.value = getTodayDate();
-    }
+    if (paymentDate && !paymentDate.value) paymentDate.value = getTodayDate();
+
 });
 
-// ====================== showAlert function ======================
+/* ── showAlert ── */
 function showAlert(message, type) {
-    var alertDiv = document.createElement('div');
-
     let icon = '';
     if (type === 'success') icon = '<span class="icon">&#10003;</span>';
-    else if (type === 'danger') icon = '<span class="icon">&#10060;</span>';
+    else if (type === 'danger')  icon = '<span class="icon">&#10060;</span>';
     else if (type === 'warning') icon = '<span class="icon">&#9888;&#65039;</span>';
 
+    const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type}`;
     alertDiv.innerHTML = `${icon}<span>${message}</span>`;
     document.body.appendChild(alertDiv);
-
     requestAnimationFrame(() => alertDiv.classList.add('show'));
 
     setTimeout(() => {
@@ -650,46 +555,6 @@ function showAlert(message, type) {
     }, 3000);
 }
 
-
-// // ====================== DELETE LOAN ======================
-// document.querySelectorAll('.delete-btn').forEach(btn => {
-//     btn.addEventListener('click', function () {
-//         const loanId = this.dataset.loanId;
-
-//         if (!confirm("Are you sure you want to delete this loan and all related records?")) {
-//             return;
-//         }
-
-//         const loader = showLoadingIndicator();
-
-//         fetch(`/loans/delete/${loanId}/`, {
-//             method: 'POST',
-//             headers: {
-//                 'X-CSRFToken': '{{ csrf_token }}'
-//             }
-//         })
-//         .then(res => res.json())
-//         .then(data => {
-//             hideLoadingIndicator(loader);
-//             if (data.status === 'success') {
-//                 showAlert('Loan deleted successfully!', 'success');
-//                 setTimeout(() => window.location.reload(), 1500);
-//             } else {
-//                 showAlert(data.message, 'danger');
-//             }
-//         })
-//         .catch(err => {
-//             hideLoadingIndicator(loader);
-//             showAlert('Delete failed.', 'danger');
-//         });
-//     });
-// });
-
-
-
-
 </script>
 
-
-        
 {% endblock %}

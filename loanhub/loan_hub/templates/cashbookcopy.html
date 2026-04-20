@@ -1,0 +1,942 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ledger Book{% endblock %}
+
+{% block content %}
+<style>
+
+    
+    .add-cash-button {
+    display: inline-block;
+    background-color: #218838; /* Green color */
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+.add-cash-button:hover {
+    background-color: #882121; /* Darker green on hover */
+}
+    .ledger-book-content {
+        overflow-y: auto;
+    }
+    .date-filter {
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+    }
+    .date-filter label {
+        margin-right: 10px;
+        font-weight: bold;
+        color: #333;
+    }
+    .date-filter input[type="date"] {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+        margin-right: 20px;
+        background-color: #f9f9f9;
+        transition: border-color 0.3s ease;
+    }
+    .date-filter input[type="date"]:focus {
+        border-color: #328b60;
+        outline: none;
+    }
+</style>
+<div class="ledger-book-content">
+    <!-- Summary Table -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+    <!-- <h1>Summary Table</h1>
+    <a href="{% url 'cash_entry' %}" class="add-cash-button">
+        💵 + Add Cash
+    </a> -->
+</div>
+
+
+
+<div style="padding:0 0 10px 0;">
+
+
+
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+        <h1 style="margin:0; font-weight:600; color:#333;">
+            Cash Overview
+        </h1>
+        <a href="{% url 'cash_entry' %}" class="add-cash-button">
+            💵 + Add Cash
+        </a>
+    </div>
+
+    <div class="cw-cards-wrapper">
+
+
+        <!-- Cash -->
+        <div class="cw-card">
+            <h5>Cash</h5>
+            <h3 style="color:#2e7d32;">
+                ₹ {{ withdrawals.cash|floatformat:2 }}
+            </h3>
+        </div>
+
+        <!-- Bank 1 -->
+        <div class="cw-card">
+            <h5>Bank 1</h5>
+            <h3 style="color:#1565c0;">
+                ₹ {{ withdrawals.bank1|floatformat:2 }}
+            </h3>
+        </div>
+
+        <!-- Bank 2 -->
+        <div class="cw-card">
+            <h5>Bank 2</h5>
+            <h3 style="color:#0277bd;">
+                ₹ {{ withdrawals.bank2|floatformat:2 }}
+            </h3>
+        </div>
+
+        <!-- Adjustment -->
+        <div class="cw-card">
+            <h5>Adjustment</h5>
+            <h3 style="color:#f9a825;">
+                ₹ {{ withdrawals.adj|floatformat:2 }}
+            </h3>
+        </div>
+
+        <!-- Opening Balance -->
+<div class="cw-card">
+    <h5>Opening Balance</h5>
+    <h3 style="color:#6a1b9a;">
+        ₹ {{ withdrawals.opening_balance|default:"0.00"|floatformat:2 }}
+    </h3>
+</div>
+
+    </div>
+</div>
+
+    
+<!-- Dynamic Summary Table -->
+<!-- Dynamic Summary Table -->
+<!-- Dynamic Summary Table -->
+<div style="margin:0; padding:0 0 12px 0;">
+
+    <h1 style="
+        margin:0 0 8px 0;
+        padding:0;
+        color:#333;
+        font-size:1.6rem;
+    ">
+        Summary
+    </h1>
+
+    <table 
+        id="summary-table"
+        style="
+            width:100%;
+            border-collapse:collapse;
+            margin:0;
+            padding:0;
+            border:1px solid #cfcfcf;
+            background:#fff;
+        "
+    >
+        <thead>
+            <tr style="background-color:#328b60; color:white; height:38px;">
+                <th style="
+                    text-align:center;
+                    padding:6px;
+                    border:1px solid #cfcfcf;
+                ">
+                    Payments Total
+                </th>
+                <th style="
+                    text-align:center;
+                    padding:6px;
+                    border:1px solid #cfcfcf;
+                ">
+                    Receipts Total
+                </th>
+                <th style="
+                    text-align:center;
+                    padding:6px;
+                    border:1px solid #cfcfcf;
+                ">
+                    Balance (Receipts - Payments)
+                </th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr style="text-align:center; height:36px;">
+                <td id="summary-payments" style="
+                    padding:6px;
+                    border:1px solid #cfcfcf;
+                ">
+                    ₹ 0.00
+                </td>
+                <td id="summary-receipts" style="
+                    padding:6px;
+                    border:1px solid #cfcfcf;
+                ">
+                    ₹ 0.00
+                </td>
+                <td id="summary-balance" style="
+                    padding:6px;
+                    border:1px solid #cfcfcf;
+                    font-weight:600;
+                ">
+                    ₹ 0.00
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+
+
+<script>
+// Calculate summary dynamically from tables
+function calculateSummary() {
+    function sumColumn(tableId) {
+        let table = document.getElementById(tableId);
+        let rows = table.querySelectorAll('tbody tr');
+        let total = 0;
+
+        rows.forEach(row => {
+            if (row.style.display !== 'none') {
+
+let amount = parseFloat(row.cells[10]?.innerText.replace(/[₹,]/g,'')) || 0;
+total += amount;
+            }
+        });
+
+        return total;
+    }
+
+    const receiptsTotal = sumColumn('receipts-table');
+    const paymentsTotal = sumColumn('payments-table');
+    const balance = receiptsTotal - paymentsTotal;
+
+    document.getElementById('summary-receipts').innerText = '₹ ' + formatIndianNumber(receiptsTotal);
+    document.getElementById('summary-payments').innerText = '₹ ' + formatIndianNumber(paymentsTotal);
+    document.getElementById('summary-balance').innerText = '₹ ' + formatIndianNumber(balance);
+}
+
+// Run initially
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Step 1: calculate row totals first
+    calculateRowAmounts("receipts-table");
+    calculateRowAmounts("payments-table");
+
+    // Step 2: calculate footer totals
+    calculateFooterAmountTotal("receipts-table","receipts-total-amount");
+    calculateFooterAmountTotal("payments-table","payments-total-amount");
+
+    // Step 3: calculate summary AFTER everything
+    calculateSummary();
+
+});
+
+// Also recalculate if you apply date filters
+function recalcSummaryAfterFilter() {
+    calculateSummary();
+}
+
+// You can call recalcSummaryAfterFilter() after filtering rows
+</script>
+
+
+    <!-- Date Filters -->
+    <div class="date-filter">
+        <label for="receipt-start-date">Receipts Start Date:</label>
+        <input type="date" id="receipt-start-date" name="receipt-start-date">
+        <label for="receipt-end-date">End Date:</label>
+        <input type="date" id="receipt-end-date" name="receipt-end-date">
+    </div>
+
+<!-- Receipts Table Header with Download Button -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <h1 style="margin:0; font-weight:600; color:#333;">
+  &#8595; Receipts Table
+</h1>
+
+    <button onclick="exportVisibleRows('receipts-table','Receipts_Report')" 
+        style="
+            background: linear-gradient(135deg, #328b60,#328b60);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        "
+        onmouseover="this.style.background='linear-gradient(135deg, #218838, #1e7e34)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.2)';"
+        onmouseout="this.style.background='linear-gradient(135deg, #28a745, #218838)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
+    >
+        ⬇ Download Receipts Excel
+    </button>
+</div>
+  
+    <div class="table-container">
+        <table class="styled-table" id="receipts-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Gen No</th>
+                    <th>Name</th>
+                    <th>Id</th>
+                    <th>Type</th>
+                    <th>Cash</th>
+                    <th>Bank 1</th>
+                    <th>Bank 2</th>
+                    <th>Adjustment</th>
+                    <th>Opening Balance</th>
+                    <th>Amount</th>
+
+                </tr>
+            </thead>
+<tbody>
+    {% for transaction in transactions %}
+        <tr data-date="{{ transaction.created_at|date:'Y-m-d' }}">
+            <td>{{ transaction.created_at|date:"d-m-Y" }}</td>
+    <!-- GEN NO -->
+    <td>
+        {% if transaction.loan and transaction.loan.gen_no %}
+            {{ transaction.loan.gen_no }}
+        {% elif transaction.gen_no %}
+            {{ transaction.gen_no }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+
+    <!-- NAME -->
+    <td>
+        {% if transaction.loan and transaction.loan.name %}
+            {{ transaction.loan.name }}
+        {% elif transaction.name %}
+            {{ transaction.name }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+            {# ===== LOAN ID / CODE (FINAL FIX) ===== #}
+            <td>
+                {% if transaction.loan %}
+                    {% if transaction.loan.code %}
+                        {{ transaction.loan.code }}   {# LoanRepayment #}
+                    {% else %}
+                        {{ transaction.loan.id }}     {# CashEntry / Transfer #}
+                    {% endif %}
+                {% else %}
+                    {{ transaction.code }}            {# Loan / Deposit #}
+                {% endif %}
+            </td>
+
+            {# ===== TYPE OF LOAN ===== #}
+            <td>
+                {% if transaction.loan %}
+                    {{ transaction.loan.type_of_loan }}
+                {% elif transaction.type_of_loan %}
+                    {{ transaction.type_of_loan }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+
+            <td>{{ transaction.cash|default:"0.00"|floatformat:2 }}</td>
+            <td>{{ transaction.bank1|default:"0.00"|floatformat:2 }}</td>
+            <td>{{ transaction.bank2|default:"0.00"|floatformat:2 }}</td>
+            <td>{{ transaction.adj|default:"0.00"|floatformat:2 }}</td>
+            <td>{{ transaction.opening_balance|default:"0.00"|floatformat:2 }}</td>
+<td class="amount-cell"></td>
+
+
+        </tr>
+    {% endfor %}
+</tbody>
+
+
+<tfoot style="background-color:#328b60;">
+    <tr>
+        <!-- Date -->
+        <th style="color:white;font-weight:bold;font-size:20px;">
+            Total
+        </th>
+
+        <!-- Gen No -->
+        <td></td>
+
+        <!-- Name -->
+        <td></td>
+
+        <!-- Loan Id -->
+        <td></td>
+
+        <!-- Loan Type -->
+        <td></td>
+
+        <!-- Cash -->
+        <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+            {{ transactions_totals.total_cash|default:"0.00"|floatformat:2 }}
+        </td>
+
+        <!-- Bank 1 -->
+        <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+            {{ transactions_totals.total_bank1|default:"0.00"|floatformat:2 }}
+        </td>
+
+        <!-- Bank 2 -->
+        <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+            {{ transactions_totals.total_bank2|default:"0.00"|floatformat:2 }}
+        </td>
+
+        <!-- Adjustment -->
+        <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+            {{ transactions_totals.total_adj|default:"0.00"|floatformat:2 }}
+        </td>
+
+        <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+    {{ transactions_totals.total_opening_balance|default:"0.00"|floatformat:2 }}
+</td>
+            <!-- NEW AMOUNT TOTAL -->
+    <td id="receipts-total-amount"
+        style="color:white;font-weight:bold;font-size:20px;text-align:right;">
+        ₹ 0.00
+    </td>
+    </tr>
+</tfoot>
+
+        </table>
+    </div>
+    
+    <div class="date-filter">
+        <label for="payment-start-date">Payments Start Date:</label>
+        <input type="date" id="payment-start-date" name="payment-start-date">
+        <label for="payment-end-date">End Date:</label>
+        <input type="date" id="payment-end-date" name="payment-end-date">
+    </div>
+    <!-- Payments Table -->
+
+<!-- Payments Table -->
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+    <h1 style="margin:0; font-weight:600; color:#333;">
+  &#8593; Payments Table
+</h1>
+
+    <button onclick="exportVisibleRows('payments-table','Payments_Report')" 
+        style="
+            background: linear-gradient(135deg,#328b60, #328b60);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        "
+        onmouseover="this.style.background='linear-gradient(135deg, #218838, #1e7e34)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 12px rgba(0,0,0,0.2)';"
+        onmouseout="this.style.background='linear-gradient(135deg, #28a745, #218838)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
+    >
+        ⬇ Download Payments Excel
+    </button>
+</div>
+
+
+<div class="table-container">
+    <table class="styled-table" id="payments-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Gen No</th>
+                <th>Name</th>
+                <th>Id</th>
+                <th>Type</th>
+                <th>Cash</th>
+                <th>Bank 1</th>
+                <th>Bank 2</th>
+                <th>Adjustment</th>
+                <th>Opening Balance</th>
+                <th>Amount</th>
+
+            </tr>
+        </thead>
+
+<tbody>
+{% for payment in payments %}
+<tr data-date="{{ payment.created_at|date:'Y-m-d' }}">
+    <td>{{ payment.created_at|date:"d-m-Y" }}</td>
+
+    <!-- Gen No -->
+    <td>
+        {% if payment.loan and payment.loan.gen_no %}
+            {{ payment.loan.gen_no }}
+        {% elif payment.gen_no %}
+            {{ payment.gen_no }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+
+    <!-- Name -->
+    <td>
+        {% if payment.loan and payment.loan.name %}
+            {{ payment.loan.name }}
+        {% elif payment.name %}
+            {{ payment.name }}
+        {% else %}
+            -
+        {% endif %}
+    </td>
+
+    <!-- Loan ID -->
+    <td>{{ payment.code|default:"-" }}</td>
+
+    <!-- Loan Type -->
+    <td>{{ payment.type_of_loan|default:"-" }}</td>
+
+    <!-- Amounts -->
+    <td>{{ payment.cash|default:"0.00"|floatformat:2 }}</td>
+    <td>{{ payment.bank1|default:"0.00"|floatformat:2 }}</td>
+    <td>{{ payment.bank2|default:"0.00"|floatformat:2 }}</td>
+    <td>{{ payment.adj|default:"0.00"|floatformat:2 }}</td>
+    <td>{{ payment.opening_balance|default:"0.00"|floatformat:2 }}</td>
+<td class="amount-cell"></td>
+
+
+</tr>
+{% endfor %}
+</tbody>
+
+<tfoot style="background-color:#328b60;">
+<tr>
+    <!-- Date -->
+    <th style="color:white;font-weight:bold;font-size:20px;">
+        Total
+    </th>
+
+    <!-- Gen No -->
+    <td></td>
+
+    <!-- Name -->
+    <td></td>
+
+    <!-- Loan Id -->
+    <td></td>
+
+    <!-- Loan Type -->
+    <td></td>
+
+    <!-- Cash -->
+    <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+        {{ payments_totals.total_cash|default:"0.00"|floatformat:2 }}
+    </td>
+
+    <!-- Bank 1 -->
+    <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+        {{ payments_totals.total_bank1|default:"0.00"|floatformat:2 }}
+    </td>
+
+    <!-- Bank 2 -->
+    <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+        {{ payments_totals.total_bank2|default:"0.00"|floatformat:2 }}
+    </td>
+
+    <!-- Adjustment -->
+    <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+        {{ payments_totals.total_adj|default:"0.00"|floatformat:2 }}
+    </td>
+
+
+    <td style="color:white;font-weight:bold;font-size:20px; text-align:right;">
+    {{ payments_totals.total_opening_balance|default:"0.00"|floatformat:2 }}
+</td>
+
+        <!-- NEW AMOUNT TOTAL -->
+    <td id="payments-total-amount"
+        style="color:white;font-weight:bold;font-size:20px;text-align:right;">
+        ₹ 0.00
+    </td>
+</tr>
+</tfoot>
+
+        </table>
+    </div>
+</div>
+
+<!-- Internal CSS -->
+<style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        overflow: auto;
+    }
+
+    .ledger-book-content {
+        margin: 20px;
+    }
+
+    .table-container {
+        min-height: 300px;
+        overflow-x: auto;
+    }
+    .styled-table tfoot {
+        font-weight: bold;
+        position: sticky;
+        bottom: 0;
+        margin: 20px;
+        z-index: 1;
+    }
+    .styled-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #ddd;
+        margin-bottom: 20px;
+    }
+
+    .styled-table thead {
+        background-color: #f4f4f4;
+    }
+
+    .styled-table th, .styled-table td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+
+    .styled-table tfoot {
+        background-color: #f4f4f4;
+        font-weight: bold;
+    }
+
+    .styled-table tfoot th, .styled-table tfoot td {
+        text-align: right;
+    }
+
+    .grand-total {
+        color: red;
+        font-weight: bold;
+    }
+
+    .table-container h2 {
+        margin-top: 20px;
+        font-size: 1.5em;
+        color: #333;
+    }
+</style>
+
+<!-- Internal JavaScript -->
+<script>
+
+
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const receiptStartDate = document.getElementById('receipt-start-date');
+        const receiptEndDate = document.getElementById('receipt-end-date');
+        const paymentStartDate = document.getElementById('payment-start-date');
+        const paymentEndDate = document.getElementById('payment-end-date');
+        
+    function filterTable(tableId, startDateId, endDateId) {
+        const table = document.getElementById(tableId);
+        const rows = table.querySelectorAll('tbody tr');
+        const startValue = document.getElementById(startDateId).value;
+        const endValue = document.getElementById(endDateId).value;
+
+        const startDate = startValue ? new Date(startValue) : null;
+        const endDate = endValue ? new Date(endValue) : null;
+
+        rows.forEach(row => {
+            const rowDate = new Date(row.getAttribute('data-date'));
+
+            let show = true;
+
+            if(startDate && rowDate < startDate) show = false;
+            if(endDate && rowDate > endDate) show = false;
+
+            row.style.display = show ? '' : 'none';
+        });
+
+        // 👇 VERY IMPORTANT
+        
+        calculateSummary();
+
+if(tableId === "receipts-table"){
+    calculateFooterAmountTotal("receipts-table","receipts-total-amount");
+}
+if(tableId === "payments-table"){
+    calculateFooterAmountTotal("payments-table","payments-total-amount");
+}
+
+addFilteredTotalRow(tableId);
+    }
+
+       receiptStartDate.addEventListener('change', () =>
+    filterTable('receipts-table', 'receipt-start-date', 'receipt-end-date')
+);
+
+receiptEndDate.addEventListener('change', () =>
+    filterTable('receipts-table', 'receipt-start-date', 'receipt-end-date')
+);
+
+paymentStartDate.addEventListener('change', () =>
+    filterTable('payments-table', 'payment-start-date', 'payment-end-date')
+);
+
+paymentEndDate.addEventListener('change', () =>
+    filterTable('payments-table', 'payment-start-date', 'payment-end-date')
+);
+        
+    });
+
+
+addFilteredTotalRow("receipts-table");
+addFilteredTotalRow("payments-table");
+
+
+    
+</script>
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+function exportVisibleRows(tableId, filename){
+    let table=document.getElementById(tableId).cloneNode(true);
+    table.querySelectorAll("tbody tr").forEach(r=>{ if(r.style.display=="none")r.remove() });
+    let wb=XLSX.utils.table_to_book(table,{sheet:"Sheet1"});
+    XLSX.writeFile(wb,filename+".xlsx");
+}
+</script>
+
+<script>
+function calculateRowAmounts(tableId){
+    const rows=document.querySelectorAll(`#${tableId} tbody tr`);
+
+    rows.forEach(row=>{
+const cash  = parseFloat(row.cells[5]?.innerText.replace(/[₹,]/g,'')) || 0;
+const bank1 = parseFloat(row.cells[6]?.innerText.replace(/[₹,]/g,'')) || 0;
+const bank2 = parseFloat(row.cells[7]?.innerText.replace(/[₹,]/g,'')) || 0;
+const adj   = parseFloat(row.cells[8]?.innerText.replace(/[₹,]/g,'')) || 0;
+const opening = parseFloat(
+    (row.cells[9]?.innerText || "0")
+        .replace(/[₹,\s]/g,'')
+) || 0;
+
+const total = cash + bank1 + bank2 + adj + opening;
+
+// format
+row.cells[5].innerText = formatIndianNumber(cash);
+row.cells[6].innerText = formatIndianNumber(bank1);
+row.cells[7].innerText = formatIndianNumber(bank2);
+row.cells[8].innerText = formatIndianNumber(adj);
+row.cells[9].innerText = formatIndianNumber(opening);
+
+// amount column moved to index 10
+if(row.cells[10]){
+    row.cells[10].innerText="₹ "+formatIndianNumber(total);
+}
+    });
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+    calculateRowAmounts("receipts-table");
+    calculateRowAmounts("payments-table");
+    addFilteredTotalRow("receipts-table");
+addFilteredTotalRow("payments-table");
+});
+</script>
+<script>
+function calculateFooterAmountTotal(tableId, footerId){
+    let total = 0;
+    const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+
+    rows.forEach(row=>{
+        if(row.style.display !== 'none'){
+            const amountText = row.cells[10]?.innerText.replace(/[₹,]/g,'') || "0";
+            total += parseFloat(amountText) || 0;
+        }
+    });
+
+    document.getElementById(footerId).innerText =
+        "₹ " + formatIndianNumber(total);
+
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+    calculateFooterAmountTotal("receipts-table","receipts-total-amount");
+    calculateFooterAmountTotal("payments-table","payments-total-amount");
+    
+});
+</script>
+<script>
+function formatIndianNumber(value) {
+
+    if(value === null || value === undefined || value === "")
+        return "0.00";
+
+    // remove commas if already formatted
+    value = value.toString().replace(/,/g,'');
+
+    let num = Number(value);
+
+    if(isNaN(num))
+        return "0.00";
+
+    let sign = num < 0 ? "-" : "";
+    num = Math.abs(num);
+
+    let parts = num.toFixed(2).split(".");
+    let integerPart = parts[0];
+    let decimalPart = parts[1];
+
+    let last3 = integerPart.slice(-3);
+    let otherNumbers = integerPart.slice(0,-3);
+
+    if(otherNumbers !== "")
+        last3 = "," + last3;
+
+    let formatted =
+        otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g,",") + last3;
+
+    return sign + formatted + "." + decimalPart;
+}
+
+
+
+</script>
+
+<script>
+function addFilteredTotalRow(tableId){
+
+    const table = document.getElementById(tableId);
+    const tbody = table.querySelector("tbody");
+    const tfoot = table.querySelector("tfoot");
+
+    if(!table || !tbody || !tfoot) return;
+
+    const oldRow = tfoot.querySelector(".filtered-total-row");
+    if(oldRow) oldRow.remove();
+
+    let totalCash = 0;
+    let totalBank1 = 0;
+    let totalBank2 = 0;
+    let totalAdj = 0;
+    let totalOpening = 0;   // ✅ FIX
+    let totalAmount = 0;
+
+    const rows = tbody.querySelectorAll("tr");
+
+    rows.forEach(row => {
+        if(row.style.display !== "none"){
+
+            const cash  = parseFloat(row.cells[5]?.innerText.replace(/,/g,'')) || 0;
+            const bank1 = parseFloat(row.cells[6]?.innerText.replace(/,/g,'')) || 0;
+            const bank2 = parseFloat(row.cells[7]?.innerText.replace(/,/g,'')) || 0;
+            const adj   = parseFloat(row.cells[8]?.innerText.replace(/,/g,'')) || 0;
+const opening = parseFloat(
+    (row.cells[9]?.innerText || "0")
+        .replace(/[₹,\s]/g,'')
+) || 0;
+            const amt = parseFloat(row.cells[10]?.innerText.replace(/[₹,]/g,'')) || 0;
+
+            totalCash += cash;
+            totalBank1 += bank1;
+            totalBank2 += bank2;
+            totalAdj += adj;
+            totalOpening += opening;   // ✅ FIX
+            totalAmount += amt;
+        }
+    });
+
+    const tr = document.createElement("tr");
+    tr.classList.add("filtered-total-row");
+
+    tr.innerHTML = `
+        <th>Filtered Total</th>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="text-align:right;">${formatIndianNumber(totalCash)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalBank1)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalBank2)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalAdj)}</td>
+        <td style="text-align:right;">${formatIndianNumber(totalOpening)}</td> <!-- ✅ FIX -->
+        <td style="text-align:right;">₹ ${formatIndianNumber(totalAmount)}</td>
+    `;
+
+    tr.style.backgroundColor = "#fff59d";
+    tr.style.fontWeight = "600";
+
+    tfoot.insertBefore(tr, tfoot.firstElementChild);
+}
+</script>
+<style>
+.cw-card{
+    border:1px solid #e0e0e0;
+    padding:20px;
+    width:220px;
+    border-radius:12px;
+    background:#fff;
+    box-shadow:0 6px 12px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.cw-card:hover{
+    transform: translateY(-5px);
+    box-shadow:0 10px 20px rgba(0,0,0,0.15);
+}
+.cw-card h5{
+    margin:0;
+    color:#555;
+    font-weight:500;
+}
+.cw-card h3{
+    margin-top:12px;
+}
+</style>
+<style>
+.cw-cards-wrapper{
+    display: flex;
+    gap: 15px;
+    flex-wrap: nowrap;   /* ❌ prevent wrapping */
+    justify-content: space-between;
+    align-items: stretch;
+}
+
+.cw-card{
+    flex: 1;              /* ✅ auto fit equally */
+    min-width: 150px;     /* optional safety */
+    max-width: 200px;     /* control size */
+    padding: 15px;        /* slightly smaller */
+}
+
+.cw-card:hover{
+    transform: translateY(-5px);
+    box-shadow:0 10px 20px rgba(0,0,0,0.15);
+}
+
+.cw-card h5{
+    margin:0;
+    color:#555;
+    font-weight:500;
+}
+
+.cw-card h3{
+    margin-top:12px;
+}
+</style>
+
+
+{% endblock %}

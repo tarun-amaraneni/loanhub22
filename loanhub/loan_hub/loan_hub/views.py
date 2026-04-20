@@ -207,6 +207,17 @@ def loans_view(request):
         'user_name': user_name,
         'gen_no': gen_no,
     })
+
+
+
+
+
+
+
+
+
+
+
 from django.db.models import Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from decimal import Decimal, InvalidOperation
@@ -220,11 +231,27 @@ from django.db.models.functions import Coalesce
 from .models import User, Loan, LoanRepayment, generate_unique_repayment_code
 from .services import process_loan_repayment
 
+
+from .services import (
+    process_loan_repayment,
+    process_deposit_account,
+    safe_decimal,
+    get_deposit_entries,
+    set_deposit_entries,
+    ACCUMULATIVE_TYPES,
+)
 def deposits_view(request):
     deposit_types = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
     loans = []
     user_name = None
     gen_no = None
+
+    def recalculate(loan, gen_no):
+        """Call the correct recalculation function based on loan type."""
+        if loan.type_of_loan in ACCUMULATIVE_TYPES:
+            process_deposit_account(gen_no, loan.type_of_loan)
+        else:
+            process_loan_repayment(loan)
 
     # =========================
     # GET: Display deposits
@@ -243,8 +270,7 @@ def deposits_view(request):
                 )
 
                 for loan in loans_queryset:
-                    # Update Loan balance/interest in DB
-                    process_loan_repayment(loan)
+                    recalculate(loan, gen_no)
                     loan.refresh_from_db()
 
                     loans.append({
@@ -275,7 +301,7 @@ def deposits_view(request):
             )
 
             for loan in loans_queryset:
-                process_loan_repayment(loan)
+                recalculate(loan, gen_no)
                 loan.refresh_from_db()
                 loans.append({
                     'loan_type': dep_type,
@@ -296,26 +322,26 @@ def deposits_view(request):
                     except InvalidOperation:
                         return Decimal("0")
 
-                cash  = get_decimal('cash')
-                bank1 = get_decimal('bank1')
-                bank2 = get_decimal('bank2')
-                adj   = get_decimal('adj')
+                cash            = get_decimal('cash')
+                bank1           = get_decimal('bank1')
+                bank2           = get_decimal('bank2')
+                adj             = get_decimal('adj')
                 opening_balance = get_decimal('opening_balance')
 
                 actual_payment = cash + bank1 + bank2 + adj
-                total_payment = actual_payment + opening_balance
+                total_payment  = actual_payment + opening_balance
 
                 if total_payment <= 0:
                     return JsonResponse({'status': 'error', 'message': 'Invalid payment'}, status=400)
 
-                process_loan_repayment(loan)
+                # Recalculate before creating repayment
+                recalculate(loan, gen_no)
                 loan.refresh_from_db()
 
-                paid_to_interest = min(loan.interest, actual_payment)
-                actual_payment -= paid_to_interest
-
+                paid_to_interest  = min(loan.interest, actual_payment)
+                actual_payment   -= paid_to_interest
                 paid_to_principal = min(loan.balance, actual_payment)
-                actual_payment -= paid_to_principal
+
                 date_str = request.POST.get('date')
                 repayment_datetime = timezone.now()
                 if date_str:
@@ -324,7 +350,7 @@ def deposits_view(request):
                     except ValueError:
                         pass
 
-                repayment = LoanRepayment.objects.create(
+                LoanRepayment.objects.create(
                     loan=loan,
                     total_payment=cash + bank1 + bank2 + adj + opening_balance,
                     paid_to_interest=paid_to_interest,
@@ -335,14 +361,14 @@ def deposits_view(request):
                     bank1=bank1,
                     bank2=bank2,
                     adj=adj,
-                    opening_balance=opening_balance,  # ✅ ADD THIS
+                    opening_balance=opening_balance,
                     code=generate_unique_repayment_code(),
                     type_of_loan=loan.type_of_loan,
                     created_at=repayment_datetime
                 )
 
-                # Update loan DB after repayment
-                process_loan_repayment(loan)
+                # Recalculate after repayment
+                recalculate(loan, gen_no)
                 loan.refresh_from_db()
 
                 return JsonResponse({'status': 'success'})
@@ -372,7 +398,6 @@ def deposits_view(request):
         'user_name': user_name,
         'gen_no': gen_no,
     })
-
 
 from decimal import Decimal, InvalidOperation
 from django.shortcuts import render
@@ -768,16 +793,12 @@ def Update_intrest_rate(request):
 def closed_loans_view(request):
     closed_loans = []
     user_name = None
-    gen_no = request.GET.get("gen_no") or request.POST.get("gen_no")  # works for GET + POST
+    gen_no = request.GET.get("gen_no") or request.POST.get("gen_no")
 
-    # Show all closed loans if no filter
     if not gen_no:
         closed_loans = Loan.objects.filter(loan_status="Closed")
     else:
-        # filter loans
         closed_loans = Loan.objects.filter(gen_no__icontains=gen_no, loan_status="Closed")
-
-        # fetch user for display UI
         user = User.objects.filter(code__icontains=gen_no).first()
         if user:
             user_name = user.name
@@ -787,8 +808,6 @@ def closed_loans_view(request):
         'user_name': user_name,
         'gen_no': gen_no,
     })
-
-
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 from decimal import Decimal, InvalidOperation
 from django.shortcuts import render
@@ -842,6 +861,7 @@ def cash_book(request):
             self.bank1 = self.amount if cash_entry.type_of_cash == "Bank1" else Decimal('0')
             self.bank2 = self.amount if cash_entry.type_of_cash == "Bank2" else Decimal('0')
             self.adj = self.amount if cash_entry.type_of_cash == "Adjustment" else Decimal('0')
+            self.opening_balance = self.amount if cash_entry.type_of_cash == "opening balance" else Decimal('0')
 
             # 🔥 ADD THIS LINE
             self.type_of_loan = cash_entry.type_of_loan
@@ -1127,142 +1147,106 @@ from decimal import Decimal, InvalidOperation
 from django.db import IntegrityError
 from datetime import datetime
 from django.http import JsonResponse
+from django.http import JsonResponse
 
-ACCUMULATE_TYPES = ['THRIFT FUNDS', 'WELFARE COLLECTIONS']
+# def submit_new_table(request):
+#     if request.method == 'POST':
+
+#         gen_no = request.POST.get('gen_no', '').strip()
+#         loan_type = request.POST.get('Loan Type', '').strip()
+#         amount = request.POST.get('Amount')
+#         cash = request.POST.get('Cash')
+#         online = request.POST.get('Online')
+#         bank1 = request.POST.get('Bank1')
+#         bank2 = request.POST.get('Bank2')
+#         adj = request.POST.get('Adj')
+#         opening_balance = request.POST.get('opening_balance')
+#         loan_date_str = request.POST.get('date')
+#         ref = request.POST.get('ref', '').strip()
+
+#         if not gen_no or not loan_type or not amount:
+#             return JsonResponse({'status': 'error', 'message': 'Required fields are missing.'}, status=400)
+
+#         user = User.objects.filter(code=gen_no).first()
+#         if not user:
+#             return JsonResponse({'status': 'error', 'message': 'User not found.'}, status=404)
+
+#         def to_decimal(val):
+#             try:
+#                 return Decimal(str(val).strip())
+#             except Exception:
+#                 return Decimal("0")
+
+#         amt             = to_decimal(amount)
+#         cash            = to_decimal(cash)
+#         bank1           = to_decimal(bank1)
+#         bank2           = to_decimal(bank2)
+#         adj             = to_decimal(adj)
+#         opening_balance = to_decimal(opening_balance)
+#         total_amount    = amt
+
+#         # =========================
+#         # 🔥 REF DUPLICATE CHECK
+#         # =========================
+#         if ref:
+#             if Loan.objects.filter(code=ref).exists():
+#                 return JsonResponse({
+#                     'status': 'error',
+#                     'message': f'Reference "{ref}" already exists. Please use a different one.'
+#                 }, status=400)
+
+#         # =========================
+#         # 🔥 CREATE NEW LOAN
+#         # =========================
+#         loan_data = {
+#             'gen_no':          gen_no,
+#             'name':            user.name,
+#             'amount':          total_amount,
+#             'cash':            str(cash),
+#             'online':          online,
+#             'bank1':           str(bank1),
+#             'bank2':           str(bank2),
+#             'adj':             str(adj),
+#             'opening_balance': opening_balance,
+#             'type_of_loan':    loan_type,
+#         }
+
+#         form = LoanForm(loan_data)
+
+#         if not form.is_valid():
+#             return JsonResponse({'status': 'error', 'message': 'Form invalid'}, status=400)
+
+#         loan = form.save(commit=False)
+
+#         if ref:
+#             loan.code = ref
+
+#         if loan_date_str:
+#             try:
+#                 loan.created_at = datetime.strptime(loan_date_str, "%Y-%m-%d")
+#             except ValueError:
+#                 pass
+
+#         loan.interest = 0
+
+#         try:
+#             loan.save()
+#         except IntegrityError as e:
+#             error_str = str(e).lower()
+#             if 'unique' in error_str or 'duplicate' in error_str:
+#                 return JsonResponse({
+#                     'status': 'error',
+#                     'message': f'Reference "{ref}" was just taken by another entry. Please try a different one.'
+#                 }, status=409)
+#             raise
+
+#         send_loan_email(user.Email)
+
+#         return JsonResponse({'status': 'success', 'message': 'New loan created'})
+
+#     return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=405)
 
 
-def submit_new_table(request):
-    if request.method == 'POST':
-
-        gen_no = request.POST.get('gen_no', '').strip()
-        loan_type = request.POST.get('Loan Type', '').strip()
-        amount = request.POST.get('Amount')
-        cash = request.POST.get('Cash')
-        online = request.POST.get('Online')
-        bank1 = request.POST.get('Bank1')
-        bank2 = request.POST.get('Bank2')
-        adj = request.POST.get('Adj')
-        opening_balance = request.POST.get('opening_balance')
-        loan_date_str = request.POST.get('date')
-        ref = request.POST.get('ref')
-
-        if not gen_no or not loan_type or not amount:
-            return JsonResponse({'status': 'error', 'message': 'Required fields are missing.'}, status=400)
-
-        user = User.objects.filter(code=gen_no).first()
-        if not user:
-            return JsonResponse({'status': 'error', 'message': 'User not found.'}, status=404)
-
-        # 🔧 helper
-        def to_decimal(val):
-            try:
-                return Decimal(str(val).strip())
-            except:
-                return Decimal("0")
-
-        amt   = to_decimal(amount)
-        cash  = to_decimal(cash)
-        bank1 = to_decimal(bank1)
-        bank2 = to_decimal(bank2)
-        adj   = to_decimal(adj)
-        opening_balance = to_decimal(opening_balance)  # ✅ NEW
-
-        total_amount = amt  # or cash+bank1+bank2+adj (based on your logic)
-
-        # =========================
-        # 🔥 ACCUMULATION LOGIC
-        # =========================
-        if loan_type.upper() in ACCUMULATE_TYPES:
-
-            existing_loan = Loan.objects.filter(
-                gen_no__iexact=gen_no,
-                type_of_loan__iexact=loan_type,
-                loan_status__iexact='Active'
-            ).first()
-
-            if existing_loan:
-                print("✅ ACCUMULATING INTO:", existing_loan.id)
-
-                existing_loan.amount = to_decimal(existing_loan.amount) + total_amount
-
-                existing_loan.cash = str(
-                    to_decimal(existing_loan.cash) + cash
-                )
-
-                existing_loan.bank1 = str(
-                    to_decimal(existing_loan.bank1) + bank1
-                )
-
-                existing_loan.bank2 = str(
-                    to_decimal(existing_loan.bank2) + bank2
-                )
-
-                existing_loan.save(force_update=True)
-
-                return JsonResponse({
-                    'status': 'success',
-                    'message': 'Amount added to existing loan'
-                })
-
-        # =========================
-        # 🔥 CREATE NEW LOAN
-        # =========================
-        loan_data = {
-            'gen_no': gen_no,
-            'name': user.name,
-            'amount': total_amount,
-            'cash': str(cash),
-            'online': online,
-            'bank1': str(bank1),
-            'bank2': str(bank2),
-            'adj': str(adj),
-            'opening_balance': opening_balance,  # ✅ NEW
-            'type_of_loan': loan_type
-        }
-
-        form = LoanForm(loan_data)
-
-        if form.is_valid():
-            loan = form.save(commit=False)
-
-            # ✅ REF FIX
-            if ref and ref.strip():
-                loan.code = ref.strip()
-            # ❌ DO NOT set loan.code = None
-            # Let model handle auto-generation
-            # DATE FIX
-            if loan_date_str:
-                try:
-                    loan.created_at = datetime.strptime(loan_date_str, "%Y-%m-%d")
-                except ValueError:
-                    pass
-
-            loan.interest = 0
-
-            try:
-                if ref and ref.strip():
-                    if Loan.objects.filter(code=ref.strip()).exists():
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Reference already exists. Please use a different one.'
-                        })
-                loan.save()
-            except IntegrityError:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Reference already exists.'
-                })
-
-            send_loan_email(user.Email)
-
-            return JsonResponse({
-                'status': 'success',
-                'message': 'New loan created'
-            })
-
-        return JsonResponse({'status': 'error', 'message': 'Form invalid'}, status=400)
-
-    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=405)
 def search_user_codes(request):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         term = request.GET.get('term', '')
@@ -1902,7 +1886,7 @@ def cash_entry_view(request):
                 type_of_loan="AddCash"
             )
 
-            messages.success(request, f"Amount added successfully! Code: {code}")
+            # messages.success(request, f"Amount added successfully! Code: {code}")
             return redirect("cash_entry")
 
         else:
@@ -2687,7 +2671,6 @@ def all_users(request):
 
 from decimal import Decimal
 from django.shortcuts import render
-
 def cash_withdrawals(request):
 
     # ------------------ Base data ------------------
@@ -2711,7 +2694,9 @@ def cash_withdrawals(request):
             self.bank1 = self.amount if cash_entry.type_of_cash == "Bank1" else Decimal('0')
             self.bank2 = self.amount if cash_entry.type_of_cash == "Bank2" else Decimal('0')
             self.adj = self.amount if cash_entry.type_of_cash == "Adjustment" else Decimal('0')
-
+            # ✅ ADD THIS
+            self.opening_balance = self.amount if cash_entry.type_of_cash == "opening balance" else Decimal('0')
+        
             self.type_of_loan = cash_entry.type_of_loan
             self.loan = type('LoanObj', (object,), {
                 'id': cash_entry.code,
@@ -2755,7 +2740,7 @@ def cash_withdrawals(request):
     transactions = new_transactions
     payments = new_payments
 
-    # ------------------ OtherCashTransaction (ADD – SAME AS cash_book) ------------------
+    # ------------------ OtherCashTransaction ------------------
     other_receipts = list(
         OtherCashTransaction.objects.filter(transaction_type='RECEIPT')
     )
@@ -2783,6 +2768,8 @@ def cash_withdrawals(request):
         'bank1': sum(safe_decimal(getattr(t, 'bank1', 0)) for t in transactions),
         'bank2': sum(safe_decimal(getattr(t, 'bank2', 0)) for t in transactions),
         'adj': sum(get_adj(t) for t in transactions),
+        # ✅ ADD THIS
+        'opening_balance': sum(safe_decimal(getattr(t, 'opening_balance', 0)) for t in transactions),
     }
 
     payments_totals = {
@@ -2790,6 +2777,8 @@ def cash_withdrawals(request):
         'bank1': sum(safe_decimal(getattr(p, 'bank1', 0)) for p in payments),
         'bank2': sum(safe_decimal(getattr(p, 'bank2', 0)) for p in payments),
         'adj': sum(get_adj(p) for p in payments),
+        # ✅ ADD THIS
+        'opening_balance': sum(safe_decimal(getattr(p, 'opening_balance', 0)) for p in payments),
     }
 
     # ------------------ Withdrawals ------------------
@@ -2798,13 +2787,15 @@ def cash_withdrawals(request):
         'bank1': receipts_totals['bank1'] - payments_totals['bank1'],
         'bank2': receipts_totals['bank2'] - payments_totals['bank2'],
         'adj': receipts_totals['adj'] - payments_totals['adj'],
+        # ✅ ADD THIS
+        'opening_balance': receipts_totals['opening_balance'] - payments_totals['opening_balance'],
     }
 
     cash_entries = CashEntry.objects.all().order_by('-datetime')
 
     return render(request, 'cash_withdrawals.html', {
         'withdrawals': withdrawals,
-        'cash_entries': cash_entries   # ✅ ADD THIS
+        'cash_entries': cash_entries
     })
 from decimal import Decimal
 from django.shortcuts import redirect
@@ -3814,7 +3805,8 @@ def loanadd(request):
     RECEIPT_TYPES = [
     "ADMISSION FEES",
     "OTHER RECEIPTS",
-                         ]
+    "SHARE CAPITAL"
+]
 
 
     if request.method == "POST":
@@ -5159,14 +5151,251 @@ def download_user_pdf(request, gen_no, report_type):
 
 
 
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib import messages
+from decimal import Decimal
+from .models import CashEntry
+
 def edit_cash_entry(request, id):
-    entry = CashEntry.objects.get(id=id)
+    entry = get_object_or_404(CashEntry, id=id)
 
     if request.method == "POST":
-        entry.amount = request.POST.get("amount")
-        entry.type_of_cash = request.POST.get("type_of_cash")
-        entry.remarks = request.POST.get("remarks")
-        entry.save()
+        amount = Decimal(request.POST.get("amount"))
+        remarks = request.POST.get("remarks")
+
+        code = entry.code
+
+        # 🔥 Extract base code (TR0001)
+        if "-DR" in code:
+            base_code = code.replace("-DR", "")
+        elif "-CR" in code:
+            base_code = code.replace("-CR", "")
+        else:
+            base_code = None
+
+        # ================= TRANSFER =================
+        if base_code and entry.type_of_loan == "Transfer":
+
+            dr_entry = CashEntry.objects.filter(code=f"{base_code}-DR").first()
+            cr_entry = CashEntry.objects.filter(code=f"{base_code}-CR").first()
+
+            if dr_entry and cr_entry:
+                # 🔒 KEEP type same, only update amount & remarks
+
+                dr_entry.amount = -abs(amount)
+                dr_entry.remarks = remarks
+                dr_entry.save()
+
+                cr_entry.amount = abs(amount)
+                cr_entry.remarks = remarks
+                cr_entry.save()
+
+                messages.success(request, f"Transfer {base_code} updated successfully ✅")
+
+        # ================= NORMAL ENTRY =================
+        else:
+            entry.amount = amount
+            entry.remarks = remarks
+            entry.save()
+
+            messages.success(request, "Entry updated successfully ✅")
+
         return redirect('cash_withdrawals')
 
     return render(request, 'edit_cash.html', {'entry': entry})
+
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from .models import CashEntry
+
+def delete_cash_entry(request, id):
+    if request.method == "POST":
+        entry = get_object_or_404(CashEntry, id=id)
+
+        code = entry.code  # e.g. TR0001-DR
+
+        # 🔥 extract base code (TR0001)
+        if "-DR" in code:
+            base_code = code.replace("-DR", "")
+        elif "-CR" in code:
+            base_code = code.replace("-CR", "")
+        else:
+            base_code = code  # normal entry (not transfer)
+
+        # 🔥 delete both DR & CR
+        related_entries = CashEntry.objects.filter(code__startswith=base_code)
+
+        count = related_entries.count()
+        related_entries.delete()
+
+        # messages.success(request, f"{count} linked entries deleted successfully ✅")
+
+    return redirect('cash_withdrawals')
+
+
+
+
+
+# today
+
+from datetime import datetime, date
+from django.http import JsonResponse
+from django.db import IntegrityError
+from django.utils import timezone
+from decimal import Decimal, InvalidOperation
+from .services import (
+    process_loan_repayment,
+    process_deposit_account,
+    safe_decimal,
+    ACCUMULATIVE_TYPES,
+)
+from datetime import datetime, date
+from django.http import JsonResponse
+from django.db import IntegrityError
+from decimal import Decimal, InvalidOperation
+from .services import process_loan_repayment, process_deposit_account, safe_decimal, ACCUMULATIVE_TYPES
+from .services import process_loan_repayment, process_deposit_account, safe_decimal, ACCUMULATIVE_TYPES
+
+
+
+from datetime import datetime, date
+from django.http import JsonResponse
+from django.db import IntegrityError
+from django.utils import timezone
+from decimal import Decimal, InvalidOperation
+from .services import (
+    process_loan_repayment,
+    process_deposit_account,
+    safe_decimal,
+    get_deposit_entries,
+    set_deposit_entries,
+    ACCUMULATIVE_TYPES,
+)
+@transaction.atomic
+def submit_new_table(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=405)
+
+    gen_no        = request.POST.get('gen_no', '').strip()
+    loan_type     = request.POST.get('Loan Type', '').strip()
+    amount        = request.POST.get('Amount')
+    cash          = request.POST.get('Cash')
+    online        = request.POST.get('Online')
+    bank1         = request.POST.get('Bank1')
+    bank2         = request.POST.get('Bank2')
+    adj           = request.POST.get('Adj')
+    opening_bal   = request.POST.get('opening_balance')
+    loan_date_str = request.POST.get('date')
+    ref           = request.POST.get('ref', '').strip()
+
+    if not gen_no or not loan_type or not amount:
+        return JsonResponse({'status': 'error', 'message': 'Required fields are missing.'}, status=400)
+
+    user = User.objects.filter(code=gen_no).first()
+    if not user:
+        return JsonResponse({'status': 'error', 'message': 'User not found.'}, status=404)
+
+    def to_decimal(val):
+        try:
+            return Decimal(str(val).strip())
+        except Exception:
+            return Decimal('0')
+
+    amt           = to_decimal(amount)
+    cash_d        = to_decimal(cash)
+    bank1_d       = to_decimal(bank1)
+    bank2_d       = to_decimal(bank2)
+    adj_d         = to_decimal(adj)
+    opening_bal_d = to_decimal(opening_bal)
+
+    # Parse deposit date
+    deposit_date  = date.today()
+    loan_datetime = timezone.now()
+    if loan_date_str:
+        try:
+            deposit_date  = date.fromisoformat(loan_date_str)
+            loan_datetime = datetime.strptime(loan_date_str, "%Y-%m-%d")
+        except ValueError:
+            pass
+
+    if ref and Loan.objects.filter(code=ref).exists():
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Reference "{ref}" already exists.'
+        }, status=400)
+
+    # ── Accumulative types: update existing loan, never create a new one ──────
+    if loan_type in ACCUMULATIVE_TYPES:
+        existing_loan = Loan.objects.filter(
+            gen_no=gen_no,
+            type_of_loan=loan_type,
+            loan_status='Active'
+        ).order_by('created_at', 'id').first()
+
+        if existing_loan:
+            # Append this deposit as its own dated entry in loan.source
+            entries = get_deposit_entries(existing_loan)
+            entries.append({
+                'date':   deposit_date.isoformat(),
+                'amount': str(amt),
+            })
+            set_deposit_entries(existing_loan, entries)
+            existing_loan.amount = safe_decimal(existing_loan.amount) + amt
+            existing_loan.save()
+
+            # Recalculate interest across full deposit timeline
+            process_deposit_account(gen_no, loan_type)
+
+            return JsonResponse({'status': 'success', 'message': 'Deposit added to existing account'})
+
+        # No existing loan → fall through and create the first one below
+
+    # ── Standard loan OR first accumulative deposit ───────────────────────────
+    loan_data = {
+        'gen_no':          gen_no,
+        'name':            user.name,
+        'amount':          amt,
+        'cash':            str(cash_d),
+        'online':          online,
+        'bank1':           str(bank1_d),
+        'bank2':           str(bank2_d),
+        'adj':             str(adj_d),
+        'opening_balance': opening_bal_d,
+        'type_of_loan':    loan_type,
+    }
+
+    form = LoanForm(loan_data)
+    if not form.is_valid():
+        return JsonResponse({'status': 'error', 'message': 'Form invalid'}, status=400)
+
+    loan = form.save(commit=False)
+
+    if ref:
+        loan.code = ref
+
+    loan.created_at = loan_datetime
+    loan.interest   = Decimal('0')
+
+    # For first accumulative deposit, initialise source with this deposit
+    if loan_type in ACCUMULATIVE_TYPES:
+        import json
+        loan.source = json.dumps([{
+            'date':   deposit_date.isoformat(),
+            'amount': str(amt),
+        }])
+
+    try:
+        loan.save()
+    except IntegrityError as e:
+        if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Reference "{ref}" was just taken. Try a different one.'
+            }, status=409)
+        raise
+
+    if loan_type in ACCUMULATIVE_TYPES:
+        process_deposit_account(gen_no, loan_type)
+
+    send_loan_email(user.Email)
+    return JsonResponse({'status': 'success', 'message': 'New loan created'})

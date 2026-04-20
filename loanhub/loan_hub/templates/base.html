@@ -12,56 +12,93 @@
     <link rel="stylesheet" href="{% static 'css/base.css' %}" />
     {% block extra_css %}{% endblock %}
     <style>
-        /* Sidebar styles */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            height: auto;
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+
+        body {
+            height: auto;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: visible;
+        }
+
+        /* ===== SIDEBAR ===== */
         .sidebar {
             width: 220px;
             background-color: #2c3e50;
             color: white;
             height: 100vh;
             position: fixed;
+            top: 0;
+            left: 0;
             transition: width 0.3s ease;
-           overflow-x: hidden;
-    overflow-y: auto;
-     scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+            overflow-x: hidden;
+            overflow-y: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            z-index: 100;
         }
-        .sidebar::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
-}
-        .sidebar.hide {
-            width: 0;
-        }
+
+        .sidebar::-webkit-scrollbar { display: none; }
+
+        .sidebar.hide { width: 0; }
+
         .sidebar-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #2c3e50;
             padding: 15px;
             text-align: center;
             border-bottom: 1px solid #34495e;
         }
+
         .sidebar-menu {
             list-style: none;
             padding: 0;
             margin: 0;
         }
+
         .sidebar-menu li a {
             display: block;
-            padding: 6px 20px;
+            padding: 8px 20px;
             color: white;
             text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: background-color 0.2s ease;
+            white-space: nowrap;
         }
-        .sidebar-menu li a:hover {
-            background-color: #34495e;
+
+        .sidebar-menu li a:hover { background-color: #34495e; }
+
+        .sidebar-menu li a.active {
+            background-color: #1a252f;
+            border-left: 3px solid #3498db;
+            color: #ffffff;
+            font-weight: 500;
         }
-        /* Main content moves left/right based on sidebar */
+
+        /* ===== MAIN CONTENT — no height/overflow constraints ===== */
         .main-content {
             margin-left: 220px;
             transition: margin-left 0.3s ease;
             padding: 20px;
         }
-        .main-content.expanded {
-             margin-left: 100px; 
-              /* instead of 0 */
-    padding-left: 15px; /* optional */
-        }
-        /* Hamburger toggle button */
+
+        .main-content.expanded { margin-left: 0; }
+
+        /* ===== TOGGLE BUTTON ===== */
         .toggle-btn {
             position: fixed;
             top: 15px;
@@ -71,7 +108,7 @@
             cursor: pointer;
             z-index: 1001;
         }
-        /* Hamburger lines */
+
         .toggle-btn div {
             width: 100%;
             height: 4px;
@@ -79,62 +116,16 @@
             margin: 5px 0;
             transition: all 0.3s ease;
         }
-        .toggle-btn.toggled div {
-    background-color: #ff0000; /* Turns white after sidebar hides */
-}
-html, body {
-    height: auto;
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow-y: auto;
-}
 
-/* MAIN CONTENT FIX */
-.main-content {
-    margin-left: 220px;
-    padding: 20px;
-    min-height: auto;   /* remove 100vh lock */
-    height: auto;       /* allow it to grow */
-    box-sizing: border-box;
-}
+        .toggle-btn.toggled div { background-color: #ff0000; }
 
-/* Sidebar remains fixed */
-.sidebar {
-    width: 220px;
-    background-color: #2c3e50;
-    color: white;
-    height: 100vh;
-    position: fixed;
-    overflow-x: hidden;
-    overflow-y: auto;
-}
-
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow-y: auto; /* allow vertical scroll */
-}
-
-.main-content {
-    margin-left: 220px;
-    padding: 20px;
-    min-height: 100vh; /* ensures content can push page height */
-    box-sizing: border-box;
-}
-
-@media (max-width: 768px) {
-    .main-content {
-        margin-left: 0; /* sidebar collapses on mobile */
-    }
-}
-
-
+        @media (max-width: 768px) {
+            .main-content { margin-left: 0; }
+        }
     </style>
 </head>
 <body>
-    <!-- Hamburger button -->
+
     <div class="toggle-btn" id="toggle-btn" aria-label="Toggle sidebar" role="button" tabindex="0">
         <div></div>
         <div></div>
@@ -142,43 +133,23 @@ html, body {
     </div>
 
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header" style="position: sticky; top: 0; z-index: 20; background-color:#2c3e50; padding:15px; border-bottom:1px solid #34495e;">
-                <img src="{% static 'images/logo-l.jpeg' %}" alt="Logo Picture" style="height: 30px;" />
-            </div>
+        <div class="sidebar-header">
+            <img src="{% static 'images/logo-l.jpeg' %}" alt="Logo Picture" style="height: 30px;" />
+        </div>
         <ul class="sidebar-menu">
-        <li>
-            <a href="{% url 'dashboard' %}">
-                <i class="fas fa-chart-line"></i>
-                <span> Dashboard</span>
-            </a>
-        </li>
-
-
+            <li><a href="{% url 'dashboard' %}"><i class="fas fa-chart-line"></i> Dashboard</a></li>
             <li><a href="{% url 'loans' %}">📄 Loans</a></li>
             <li><a href="{% url 'deposits' %}">💰 Deposits</a></li>
             <li><a href="{% url 'others' %}">📦 Others</a></li>
-            <li class="nav-item">
-    <a href="{% url 'loanadd' %}">➕ Add Record</a>
-</li>
+            <li><a href="{% url 'loanadd' %}">➕ Add Record</a></li>
             <li><a href="{% url 'closed_loans' %}">✅ Closed Loans</a></li>
             <li><a href="{% url 'cash_book' %}">📘 Cash Book</a></li>
-            <li class="nav-item">
-    <a href="{% url 'cash_withdrawals' %}" class="nav-link">
-        <i class="fas fa-money-bill-wave"></i>
-        <span> Cash Transfers</span>
-    </a>
-</li>
-            <!-- <li><a href="{% url 'addloan' %}">➕ Add Loan</a></li> -->
+            <li><a href="{% url 'cash_withdrawals' %}"><i class="fas fa-money-bill-wave"></i> Cash Transfers</a></li>
             <li><a href="{% url 'adduser' %}">👤 Add User</a></li>
             <li><a href="{% url 'users' %}">👥 Users</a></li>
-
             <li><a href="{% url 'reports' %}">📄 Reports Dashboard</a></li>
-            
             <li><a href="{% url 'download_reports' %}">📊 Download Reports</a></li>
-
-
             <li><a href="{% url 'intrest_rate' %}">📈 Interest Rate</a></li>
-
             <li><a href="{% url 'upload_excel' %}">📤 Upload Excel</a></li>
             <li><a href="{% url 'logout' %}">🚪 Logout</a></li>
         </ul>
@@ -192,24 +163,29 @@ html, body {
     </div>
 
     <script>
-    const toggleBtn = document.getElementById('toggle-btn');
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('main-content');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
 
-    toggleBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('hide');
-        mainContent.classList.toggle('expanded');
-        toggleBtn.classList.toggle('toggled'); // toggle line color
-    });
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('hide');
+            mainContent.classList.toggle('expanded');
+            toggleBtn.classList.toggle('toggled');
+        });
 
-    // Optional: allow toggle by keyboard Enter/Space
-    toggleBtn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            toggleBtn.click();
-        }
-    });
-</script>
+        toggleBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleBtn.click();
+            }
+        });
+
+        const currentPath = window.location.pathname;
+        document.querySelectorAll('.sidebar-menu li a').forEach(link => {
+            const linkPath = new URL(link.href, window.location.origin).pathname;
+            if (linkPath === currentPath) link.classList.add('active');
+        });
+    </script>
 
 </body>
 </html>

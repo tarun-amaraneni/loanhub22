@@ -3,6 +3,12 @@
 {% block content %}
 
 <style>
+/* ====== BASE.HTML OVERRIDE ====== */
+.main-content {
+    height: auto !important;
+    overflow: visible !important;
+}
+
 /* ====== PAGE LAYOUT ====== */
 html, body {
     margin: 0;
@@ -13,19 +19,17 @@ html, body {
 
 .main-wrapper {
     display: flex;
-    height: 100vh;              /* ✅ full viewport */
-    overflow: hidden;           /* ✅ prevent body cut */
+    height: 100vh;
+    overflow: hidden;
 }
 
-/* MAIN CONTENT SCROLL */
 .content {
     flex: 1;
     padding: 24px;
     background: #f7f9fc;
     box-sizing: border-box;
-
-    overflow-y: auto;           /* ✅ page scroll */
-    padding-bottom: 80px;       /* ✅ footer safety */
+    overflow-y: auto;
+    padding-bottom: 80px;
 }
 
 /* ====== HEADER ====== */
@@ -56,7 +60,6 @@ html, body {
     box-shadow: 0 6px 18px rgba(10,10,10,0.06);
 }
 
-/* CARD HEADER */
 .card-header {
     display:flex;
     justify-content:space-between;
@@ -85,12 +88,11 @@ html, body {
 
 /* ====== TABLE ====== */
 .table-wrap {
-    max-height: 260px;          /* ✅ exactly ~6 rows */
+    max-height: 260px;
     overflow-y: auto;
     border-radius: 8px;
 }
 
-/* scrollbar */
 .table-wrap::-webkit-scrollbar {
     width: 6px;
 }
@@ -99,7 +101,6 @@ html, body {
     border-radius: 6px;
 }
 
-/* TABLE */
 .report-table {
     width:100%;
     border-collapse:collapse;
@@ -114,12 +115,18 @@ html, body {
     white-space:nowrap;
 }
 
-/* sticky header */
 .report-table thead th {
     position: sticky;
     top: 0;
     background: #ffffff;
     z-index: 5;
+}
+
+/* ====== TOTAL COLUMN HIGHLIGHT ====== */
+.col-total {
+    background: #f0f7ff;
+    font-weight: 600;
+    color: #1a56db;
 }
 
 .no-rows {
@@ -162,6 +169,7 @@ html, body {
                 <th>Ref</th>
                 <th>Balance</th>
                 <th>Interest</th>
+                <th class="col-total">Total</th>
                 <th>Date</th>
             </tr>
         </thead>
@@ -172,8 +180,9 @@ html, body {
                 <td>{{ row.name }}</td>
                 <td>{{ row.type }}</td>
                 <td>{{ row.ref }}</td>
-                <td>{{ row.balance }}</td>
-                <td>{{ row.interest }}</td>
+                <td class="indian-num">{{ row.balance }}</td>
+                <td class="indian-num">{{ row.interest }}</td>
+                <td class="indian-num col-total" data-balance="{{ row.balance }}" data-interest="{{ row.interest }}"></td>
                 <td>{{ row.created_at|date:"d-m-Y" }}</td>
             </tr>
         {% endfor %}
@@ -209,6 +218,7 @@ html, body {
                 <th>Ref</th>
                 <th>Balance</th>
                 <th>Interest</th>
+                <th class="col-total">Total</th>
                 <th>Date</th>
             </tr>
         </thead>
@@ -219,8 +229,9 @@ html, body {
                 <td>{{ row.name }}</td>
                 <td>{{ row.type }}</td>
                 <td>{{ row.ref }}</td>
-                <td>{{ row.balance }}</td>
-                <td>{{ row.interest }}</td>
+                <td class="indian-num">{{ row.balance }}</td>
+                <td class="indian-num">{{ row.interest }}</td>
+                <td class="indian-num col-total" data-balance="{{ row.balance }}" data-interest="{{ row.interest }}"></td>
                 <td>{{ row.created_at|date:"d-m-Y" }}</td>
             </tr>
         {% endfor %}
@@ -265,7 +276,7 @@ html, body {
                 <td>{{ row.name }}</td>
                 <td>{{ row.type_of_loan }}</td>
                 <td>{{ row.ref }}</td>
-                <td>{{ row.amount }}</td>
+                <td class="indian-num">{{ row.amount }}</td>
                 <td>{{ row.created_at|date:"d-m-Y" }}</td>
             </tr>
         {% endfor %}
@@ -282,6 +293,51 @@ html, body {
 </div>
 
 <script>
+/* ====== INDIAN NUMBER FORMAT ====== */
+function toIndianFormat(value) {
+    const str = String(value).replace(/[^0-9.\-]/g, '');
+    if (str === '' || isNaN(str)) return value;
+
+    const num = parseFloat(str);
+    const isNegative = num < 0;
+    const absStr = Math.abs(num).toFixed(2);
+    const [intPart, decPart] = absStr.split('.');
+
+    let result = '';
+    if (intPart.length <= 3) {
+        result = intPart;
+    } else {
+        const last3 = intPart.slice(-3);
+        const rest = intPart.slice(0, -3);
+        const groups = [];
+        let i = rest.length;
+        while (i > 0) {
+            groups.unshift(rest.slice(Math.max(0, i - 2), i));
+            i -= 2;
+        }
+        result = groups.join(',') + ',' + last3;
+    }
+
+    return (isNegative ? '-' : '') + result + '.' + decPart;
+}
+
+/* ====== FILL TOTAL COLUMN ====== */
+function fillTotals() {
+    document.querySelectorAll('td.col-total').forEach(function(td) {
+        const balance  = parseFloat(td.getAttribute('data-balance'))  || 0;
+        const interest = parseFloat(td.getAttribute('data-interest')) || 0;
+        td.textContent = toIndianFormat((balance + interest).toFixed(2));
+    });
+}
+
+/* ====== APPLY INDIAN FORMAT ====== */
+function applyIndianFormat() {
+    document.querySelectorAll('td.indian-num:not(.col-total)').forEach(function(td) {
+        td.textContent = toIndianFormat(td.textContent.trim());
+    });
+}
+
+/* ====== TABLE FILTER ====== */
 function filterTable(inputId, tableId) {
     const input = document.getElementById(inputId);
     const filter = input.value.toLowerCase();
@@ -294,6 +350,11 @@ function filterTable(inputId, tableId) {
             ? "" : "none";
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    fillTotals();
+    applyIndianFormat();
+});
 </script>
 
 {% endblock %}

@@ -241,6 +241,9 @@ path(
 
     # urls.py
 path('edit-cash/<int:id>/', edit_cash_entry, name='edit_cash_entry'),
+
+path('delete-cash-entry/<int:id>/', views.delete_cash_entry, name='delete_cash_entry'),
+path('delete-cash-entry/<int:id>/', views.delete_cash_entry, name='delete_cash_entry'),
 ]
 
 

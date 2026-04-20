@@ -14,16 +14,21 @@
                    style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px;">
         </div>
 
-        <div style="margin-bottom:15px;">
-            <label>Type</label><br>
-            <select name="type_of_cash"
-                    style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px;">
-                <option value="Cash" {% if entry.type_of_cash == "Cash" %}selected{% endif %}>Cash</option>
-                <option value="Bank1" {% if entry.type_of_cash == "Bank1" %}selected{% endif %}>Bank 1</option>
-                <option value="Bank2" {% if entry.type_of_cash == "Bank2" %}selected{% endif %}>Bank 2</option>
-                <option value="Adjustment" {% if entry.type_of_cash == "Adjustment" %}selected{% endif %}>Adjustment</option>
-            </select>
-        </div>
+<div style="margin-bottom:15px;">
+    <label>Type</label><br>
+
+    <!-- 🔒 Disabled dropdown -->
+    <select disabled
+            style="width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; background:#f5f5f5;">
+        <option value="Cash" {% if entry.type_of_cash == "Cash" %}selected{% endif %}>Cash</option>
+        <option value="Bank1" {% if entry.type_of_cash == "Bank1" %}selected{% endif %}>Bank 1</option>
+        <option value="Bank2" {% if entry.type_of_cash == "Bank2" %}selected{% endif %}>Bank 2</option>
+        <option value="Adjustment" {% if entry.type_of_cash == "Adjustment" %}selected{% endif %}>Adjustment</option>
+    </select>
+
+    <!-- 👇 hidden input to preserve value -->
+    <input type="hidden" name="type_of_cash" value="{{ entry.type_of_cash }}">
+</div>
 
         <div style="margin-bottom:15px;">
             <label>Remarks</label><br>

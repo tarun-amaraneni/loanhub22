@@ -4,152 +4,236 @@
 {% block title %}Add User{% endblock %}
 
 {% block content %}
-<div class="content">
-    <h2>Add User</h2>
+<div class="au-wrap">
+  <div class="au-card">
 
-    <form class="center-form" method="post" action="{% url 'adduser' %}" id="add-user-form">
-        {% csrf_token %}
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+    <div class="au-top">
+      <h2>Add user</h2>
+      <a href="{% url 'users' %}" class="au-users-btn">Users</a>
+    </div>
 
-        <!-- Name (Required) -->
-        <div class="form-group">
-            <input type="text" name="name" placeholder="Name" class="input-box" id="name" required>
-            <span class="error-message" id="name-error">Name is required</span>
+    {% if messages %}
+      {% for message in messages %}
+        <div class="au-alert au-alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post" action="{% url 'adduser' %}" id="add-user-form" novalidate>
+      {% csrf_token %}
+
+      <div class="au-field">
+        <label for="name">Name</label>
+        <input type="text" name="name" id="name" placeholder="Full name" required>
+        <span class="au-err" id="name-error">Name is required</span>
+      </div>
+
+      <div class="au-row">
+        <div class="au-field">
+          <label for="mobile">Mobile <span class="au-opt">optional</span></label>
+          <input type="tel" name="Mobile" id="mobile" placeholder="10-digit number" pattern="[0-9]{10}">
+          <span class="au-err" id="mobile-error">Enter a valid 10-digit number</span>
         </div>
 
-        <!-- Mobile (Optional) -->
-        <div class="form-group">
-            <input type="tel" name="Mobile" placeholder="Mobile No." class="input-box" id="mobile" pattern="[0-9]{10}">
-            <span class="error-message" id="mobile-error">Valid 10-digit mobile number is required</span>
+        <div class="au-field">
+          <label for="code">Gen No <span class="au-opt">optional</span></label>
+          <input type="text" name="code" id="code" placeholder="e.g. GEN-001">
         </div>
+      </div>
 
-        <!-- Gen No (Optional) -->
-        <div class="form-group">
-            <input type="text" name="code" placeholder="Gen No (optional)" class="input-box">
-        </div>
+      <div class="au-field">
+        <label for="address">Address <span class="au-opt">optional</span></label>
+        <textarea name="Address" id="address" placeholder="Street, city, state…"></textarea>
+      </div>
 
-        <!-- Address (Optional) -->
-        <div class="form-group">
-            <textarea name="Address" placeholder="Address" class="input-box textarea-box"></textarea>
-        </div>
-
-        <button type="submit" class="submit-button">Submit</button>
+      <hr class="au-divider">
+      <button type="submit" class="au-submit">Submit</button>
     </form>
+
+  </div>
 </div>
 
 <style>
-/* ---------- Form Container ---------- */
-.content {
-    max-width: 420px;
-    margin: 40px auto;
-    background: #ffffff;
-    padding: 25px 30px;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
+*, *::before, *::after { box-sizing: border-box; }
+
+.au-wrap {
+  max-width: 620px;
+  margin: 48px auto;
+  padding: 0 16px;
 }
 
-/* ---------- Heading ---------- */
-.content h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 1.5rem;
-    font-weight: 500;
-    color: #111827;
+.au-card {
+  background: #ffffff;
+  border: 0.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 32px 36px 28px;
 }
 
-/* ---------- Form Groups ---------- */
-.form-group {
-    margin-bottom: 15px;
+/* Header */
+.au-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
 }
 
-/* ---------- Inputs ---------- */
-.input-box {
-    width: 100%;
-    padding: 10px 12px;
-    font-size: 0.95rem;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    outline: none;
+.au-top h2 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #111827;
+  margin: 0;
 }
 
-.input-box:focus {
-    border-color: #2563eb;
+.au-users-btn {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 0.5px solid #6ee7b7;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: opacity 0.15s;
 }
 
-/* ---------- Textarea ---------- */
-.textarea-box {
-    resize: vertical;
-    min-height: 70px;
+.au-users-btn:hover { opacity: 0.8; }
+
+/* Alerts */
+.au-alert {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  margin-bottom: 16px;
+  border: 0.5px solid transparent;
 }
 
-/* ---------- Submit Button ---------- */
-.submit-button {
-    width: 100%;
-    padding: 10px 0;
-    background-color: #2563eb;
-    color: white;
-    font-size: 0.95rem;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
+.au-alert-success {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #6ee7b7;
 }
 
-.submit-button:hover {
-    background-color: #1e40af;
+.au-alert-error,
+.au-alert-danger {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fca5a5;
 }
 
-/* ---------- Alerts ---------- */
-.alert {
-    padding: 8px 12px;
-    margin-bottom: 12px;
-    border-radius: 6px;
-    font-size: 0.85rem;
+/* Two-column row */
+.au-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
-.alert-success { background: #e6f4ea; color: #1e4620; }
-.alert-error,
-.alert-danger { background: #fdecea; color: #611a15; }
+/* Fields */
+.au-field { margin-bottom: 16px; }
 
-/* ---------- Error message ---------- */
-.error-message {
-    color: #dc2626;
-    font-size: 0.75rem;
-    margin-top: 4px;
-    display: none;
+.au-field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 5px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
-/* ---------- Mobile ---------- */
-@media (max-width: 480px) {
-    .content {
-        margin: 20px;
-        padding: 20px;
-    }
+.au-opt {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: #9ca3af;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
+.au-field input,
+.au-field textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+  border: 0.5px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.au-field input:focus,
+.au-field textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.au-field textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+/* Error text */
+.au-err {
+  display: none;
+  color: #dc2626;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+
+/* Divider */
+.au-divider {
+  border: none;
+  border-top: 0.5px solid #e5e7eb;
+  margin: 22px 0;
+}
+
+/* Submit */
+.au-submit {
+  width: 100%;
+  padding: 11px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 0.5px solid #93c5fd;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  font-family: inherit;
+}
+
+.au-submit:hover { opacity: 0.85; }
+.au-submit:active { transform: scale(0.99); }
+
+@media (max-width: 540px) {
+  .au-wrap { margin: 20px auto; }
+  .au-card { padding: 20px; }
+  .au-row { grid-template-columns: 1fr; gap: 0; }
+}
 </style>
 
 <script>
-// Client-side validation (unchanged)
-document.getElementById('add-user-form').addEventListener('submit', function(e) {
-    let valid = true;
-    const name = document.getElementById('name');
+document.getElementById('add-user-form').addEventListener('submit', function (e) {
+  let valid = true;
 
-    document.getElementById('name-error').style.display = 'none';
+  const name = document.getElementById('name');
+  const nameErr = document.getElementById('name-error');
+  nameErr.style.display = 'none';
+  if (!name.value.trim()) {
+    nameErr.style.display = 'block';
+    valid = false;
+  }
 
-    if (!name.value.trim()) {
-        document.getElementById('name-error').style.display = 'block';
-        valid = false;
-    }
+  const mobile = document.getElementById('mobile');
+  const mobileErr = document.getElementById('mobile-error');
+  mobileErr.style.display = 'none';
+  if (mobile.value.trim() && !/^[0-9]{10}$/.test(mobile.value.trim())) {
+    mobileErr.style.display = 'block';
+    valid = false;
+  }
 
-    if (!valid) {
-        e.preventDefault();
-    }
+  if (!valid) e.preventDefault();
 });
 </script>
 

@@ -187,7 +187,8 @@ h2 {
 <table class="styled-table">
     <thead>
         <tr>
-            <th>Loan Type</th>
+            <th>Name</th>
+            <th>Type</th>
             <th>Ref Code</th>
             <th>Amount</th>
             <th>Actions</th>
@@ -196,20 +197,20 @@ h2 {
     <tbody>
         {% for loan in closed_loans %}
         <tr>
+            <td>{{ loan.name }}</td>
             <td>{{ loan.type_of_loan }}</td>
             <td>{{ loan.code }}</td>
             <td>{{ loan.amount }}</td>
             <td><a class="view-btnS" href="{% url 'mtl_collection' loan.id %}">View</a></td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No Closed Loans Found</td></tr>
+        <tr><td colspan="5">No Closed Loans Found</td></tr>
         {% endfor %}
     </tbody>
 </table>
 </div>
 
 <script>
-// JS remains exactly the same (autocomplete + arrow)
 document.addEventListener("DOMContentLoaded", ()=>{
     const input = document.getElementById("gen_no_input");
     const dropdown = document.getElementById("code_suggestions");
