@@ -16,125 +16,57 @@
         font-size: 16px;
         transition: background-color 0.3s ease;
     }
-    .add-cash-button:hover {
-        background-color: #882121;
-    }
-    .ledger-book-content {
-        overflow-y: auto;
-    }
-    .date-filter {
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-    }
-    .date-filter label {
-        margin-right: 10px;
-        font-weight: bold;
-        color: #333;
-    }
+    .add-cash-button:hover { background-color: #882121; }
+    .ledger-book-content { overflow-y: auto; }
+    .date-filter { margin-bottom: 20px; display: flex; align-items: center; }
+    .date-filter label { margin-right: 10px; font-weight: bold; color: #333; }
     .date-filter input[type="date"] {
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-size: 14px;
-        margin-right: 20px;
-        background-color: #f9f9f9;
+        padding: 8px; border: 1px solid #ccc; border-radius: 4px;
+        font-size: 14px; margin-right: 20px; background-color: #f9f9f9;
         transition: border-color 0.3s ease;
     }
-    .date-filter input[type="date"]:focus {
-        border-color: #328b60;
-        outline: none;
-    }
-    html, body {
-        height: 100%;
-        margin: 0;
-        overflow: auto;
-    }
-    .ledger-book-content {
-        margin: 20px;
-    }
-    .table-container {
-        min-height: 300px;
-        overflow-x: auto;
-    }
+    .date-filter input[type="date"]:focus { border-color: #328b60; outline: none; }
+    html, body { height: 100%; margin: 0; overflow: auto; }
+    .ledger-book-content { margin: 20px; }
+    .table-container { min-height: 300px; overflow-x: auto; }
     .styled-table tfoot {
-        font-weight: bold;
-        position: sticky;
-        bottom: 0;
-        margin: 20px;
-        z-index: 1;
+        font-weight: bold; position: sticky; bottom: 0; margin: 20px; z-index: 1;
     }
     .styled-table {
-        width: 100%;
-        border-collapse: collapse;
-        border: 1px solid #ddd;
-        margin-bottom: 20px;
+        width: 100%; border-collapse: collapse;
+        border: 1px solid #ddd; margin-bottom: 20px;
     }
-    .styled-table thead {
-        background-color: #f4f4f4;
-    }
-    .styled-table th, .styled-table td {
-        padding: 8px;
-        border: 1px solid #ddd;
-        text-align: left;
-    }
-    .styled-table tfoot {
-        background-color: #f4f4f4;
-        font-weight: bold;
-    }
-    .styled-table tfoot th, .styled-table tfoot td {
-        text-align: right;
-    }
-    .grand-total {
-        color: red;
-        font-weight: bold;
-    }
-    .table-container h2 {
-        margin-top: 20px;
-        font-size: 1.5em;
-        color: #333;
-    }
+    .styled-table thead { background-color: #f4f4f4; }
+    .styled-table th, .styled-table td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+    .styled-table tfoot { background-color: #f4f4f4; font-weight: bold; }
+    .styled-table tfoot th, .styled-table tfoot td { text-align: right; }
+    .grand-total { color: red; font-weight: bold; }
+    .table-container h2 { margin-top: 20px; font-size: 1.5em; color: #333; }
     .cw-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        background: #fff;
+        border: 1px solid #e0e0e0; border-radius: 12px; background: #fff;
         box-shadow: 0 6px 12px rgba(0,0,0,0.08);
         transition: transform 0.2s, box-shadow 0.2s;
-        flex: 1;
-        min-width: 150px;
-        max-width: 200px;
-        padding: 15px;
+        flex: 1; min-width: 150px; max-width: 200px; padding: 15px;
     }
-    .cw-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-    }
-    .cw-card h5 {
-        margin: 0;
-        color: #555;
-        font-weight: 500;
-    }
-    .cw-card h3 {
-        margin-top: 12px;
-    }
+    .cw-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    .cw-card h5 { margin: 0; color: #555; font-weight: 500; }
+    .cw-card h3 { margin-top: 12px; }
     .cw-cards-wrapper {
-        display: flex;
-        gap: 15px;
-        flex-wrap: nowrap;
-        justify-content: space-between;
-        align-items: stretch;
+        display: flex; gap: 15px; flex-wrap: nowrap;
+        justify-content: space-between; align-items: stretch;
     }
+    /* Subtle highlight for expanded source rows */
+    tr.source-entry { background-color: #f0faf4; }
 </style>
 
 <div class="ledger-book-content">
 
-    <!-- Cash Overview Cards -->
+    <!-- ── Cash Overview Cards ─────────────────────────────────────────── -->
     <div style="padding:0 0 10px 0;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
             <h1 style="margin:0; font-weight:600; color:#333;">Cash Overview</h1>
             <a href="{% url 'cash_entry' %}" class="add-cash-button">💵 + Add Cash</a>
         </div>
-
         <div class="cw-cards-wrapper">
             <div class="cw-card">
                 <h5>Cash</h5>
@@ -159,19 +91,21 @@
         </div>
     </div>
 
-    <!-- Receipts Date Filter -->
+    <!-- ── Receipts Date Filter ───────────────────────────────────────── -->
     <div class="date-filter">
         <label for="receipt-start-date">Receipts Start Date:</label>
-        <input type="date" id="receipt-start-date" name="receipt-start-date">
+        <input type="date" id="receipt-start-date">
         <label for="receipt-end-date">End Date:</label>
-        <input type="date" id="receipt-end-date" name="receipt-end-date">
+        <input type="date" id="receipt-end-date">
     </div>
 
-    <!-- Receipts Table -->
+    <!-- ── Receipts Table ────────────────────────────────────────────── -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <h1 style="margin:0; font-weight:600; color:#333;">&#8595; Receipts Table</h1>
         <button onclick="exportVisibleRows('receipts-table','Receipts_Report')"
-            style="background:#328b60;color:white;padding:10px 18px;border-radius:8px;border:none;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.15);transition:all 0.3s ease;"
+            style="background:#328b60;color:white;padding:10px 18px;border-radius:8px;border:none;
+                   font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.15);
+                   transition:all 0.3s ease;"
             onmouseover="this.style.background='#1e7e34';this.style.transform='translateY(-2px)';"
             onmouseout="this.style.background='#328b60';this.style.transform='translateY(0)';">
             ⬇ Download Receipts Excel
@@ -197,29 +131,38 @@
             </thead>
             <tbody>
                 {% for transaction in transactions %}
-                <tr data-date="{{ transaction.created_at|date:'Y-m-d' }}">
+                {# SourceEntry objects have a 'source_entry' marker; use CSS class for subtle highlight #}
+                <tr data-date="{{ transaction.created_at|date:'Y-m-d' }}"
+                    {% if transaction.loan and transaction.loan.type_of_loan in "THRIFT FUNDS,WELFARE COLLECTIONS" %}
+                        class="source-entry"
+                    {% endif %}>
                     <td>{{ transaction.created_at|date:"d-m-Y" }}</td>
+
                     <td>
                         {% if transaction.loan and transaction.loan.gen_no %}{{ transaction.loan.gen_no }}
                         {% elif transaction.gen_no %}{{ transaction.gen_no }}
                         {% else %}-{% endif %}
                     </td>
+
                     <td>
                         {% if transaction.loan and transaction.loan.name %}{{ transaction.loan.name }}
                         {% elif transaction.name %}{{ transaction.name }}
                         {% else %}-{% endif %}
                     </td>
+
                     <td>
                         {% if transaction.loan %}
                             {% if transaction.loan.code %}{{ transaction.loan.code }}
                             {% else %}{{ transaction.loan.id }}{% endif %}
                         {% else %}{{ transaction.code }}{% endif %}
                     </td>
+
                     <td>
                         {% if transaction.loan %}{{ transaction.loan.type_of_loan }}
                         {% elif transaction.type_of_loan %}{{ transaction.type_of_loan }}
                         {% else %}-{% endif %}
                     </td>
+
                     <td data-raw="{{ transaction.cash|default:'0' }}">{{ transaction.cash|default:"0.00"|floatformat:2 }}</td>
                     <td data-raw="{{ transaction.bank1|default:'0' }}">{{ transaction.bank1|default:"0.00"|floatformat:2 }}</td>
                     <td data-raw="{{ transaction.bank2|default:'0' }}">{{ transaction.bank2|default:"0.00"|floatformat:2 }}</td>
@@ -244,19 +187,21 @@
         </table>
     </div>
 
-    <!-- Payments Date Filter -->
+    <!-- ── Payments Date Filter ───────────────────────────────────────── -->
     <div class="date-filter">
         <label for="payment-start-date">Payments Start Date:</label>
-        <input type="date" id="payment-start-date" name="payment-start-date">
+        <input type="date" id="payment-start-date">
         <label for="payment-end-date">End Date:</label>
-        <input type="date" id="payment-end-date" name="payment-end-date">
+        <input type="date" id="payment-end-date">
     </div>
 
-    <!-- Payments Table -->
+    <!-- ── Payments Table ────────────────────────────────────────────── -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
         <h1 style="margin:0; font-weight:600; color:#333;">&#8593; Payments Table</h1>
         <button onclick="exportVisibleRows('payments-table','Payments_Report')"
-            style="background:#328b60;color:white;padding:10px 18px;border-radius:8px;border:none;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.15);transition:all 0.3s ease;"
+            style="background:#328b60;color:white;padding:10px 18px;border-radius:8px;border:none;
+                   font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 8px rgba(0,0,0,0.15);
+                   transition:all 0.3s ease;"
             onmouseover="this.style.background='#1e7e34';this.style.transform='translateY(-2px)';"
             onmouseout="this.style.background='#328b60';this.style.transform='translateY(0)';">
             ⬇ Download Payments Excel
@@ -320,15 +265,15 @@
         </table>
     </div>
 
-    <!-- Summary Table — below Payments -->
+    <!-- ── Summary Table ─────────────────────────────────────────────── -->
     <div style="margin:20px 0 0 0; padding:0 0 30px 0;">
-        <h1 style="margin:0 0 8px 0; padding:0; color:#333; font-size:1.6rem;">Summary</h1>
+        <h1 style="margin:0 0 8px 0; color:#333; font-size:1.6rem;">Summary</h1>
         <table id="summary-table" style="width:100%;border-collapse:collapse;border:1px solid #cfcfcf;background:#fff;">
             <thead>
                 <tr style="background-color:#328b60;color:white;height:38px;">
                     <th style="text-align:center;padding:6px;border:1px solid #cfcfcf;">Payments Total</th>
                     <th style="text-align:center;padding:6px;border:1px solid #cfcfcf;">Receipts Total</th>
-                    <th style="text-align:center;padding:6px;border:1px solid #cfcfcf;">Balance (Receipts - Payments)</th>
+                    <th style="text-align:center;padding:6px;border:1px solid #cfcfcf;">Balance (Receipts − Payments)</th>
                 </tr>
             </thead>
             <tbody>
@@ -345,9 +290,8 @@
 
 <!-- ===== SCRIPTS ===== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
 <script>
-/* ── Indian number formatter ── */
+/* ── Indian number formatter ────────────────────────────────────────── */
 function formatIndianNumber(value) {
     if (value === null || value === undefined || value === "") return "0.00";
     value = value.toString().replace(/,/g, '');
@@ -356,123 +300,104 @@ function formatIndianNumber(value) {
     let sign = num < 0 ? "-" : "";
     num = Math.abs(num);
     let parts = num.toFixed(2).split(".");
-    let integerPart = parts[0];
-    let decimalPart = parts[1];
+    let integerPart = parts[0], decimalPart = parts[1];
     let last3 = integerPart.slice(-3);
-    let otherNumbers = integerPart.slice(0, -3);
-    if (otherNumbers !== "") last3 = "," + last3;
-    let formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + last3;
+    let others = integerPart.slice(0, -3);
+    if (others !== "") last3 = "," + last3;
+    let formatted = others.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + last3;
     return sign + formatted + "." + decimalPart;
 }
 
-/* ── Format card values ── */
 function formatCards() {
     document.querySelectorAll('.card-indian-fmt').forEach(el => {
-        const raw = el.getAttribute('data-value') || '0';
-        el.innerText = '₹ ' + formatIndianNumber(raw);
+        el.innerText = '₹ ' + formatIndianNumber(el.getAttribute('data-value') || '0');
     });
 }
 
-/* ── Format static footer cells (Django-rendered totals) ── */
 function formatFooterCells() {
     document.querySelectorAll('.footer-indian-fmt').forEach(el => {
-        const raw = el.getAttribute('data-value') || '0';
-        el.innerText = formatIndianNumber(raw);
+        el.innerText = formatIndianNumber(el.getAttribute('data-value') || '0');
     });
 }
 
-/* ── Format all data-raw cells in tbody ── */
 function formatRawCells(tableId) {
     document.querySelectorAll(`#${tableId} tbody tr td[data-raw]`).forEach(td => {
-        const raw = td.getAttribute('data-raw') || '0';
-        td.innerText = formatIndianNumber(raw);
+        td.innerText = formatIndianNumber(td.getAttribute('data-raw') || '0');
     });
 }
 
-/* ── Calculate Amount column = sum of cash+bank1+bank2+adj+opening ── */
 function calculateRowAmounts(tableId) {
     document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => {
-        const cash    = parseFloat(row.cells[5]?.getAttribute('data-raw') || row.cells[5]?.innerText.replace(/[₹,]/g,'')) || 0;
-        const bank1   = parseFloat(row.cells[6]?.getAttribute('data-raw') || row.cells[6]?.innerText.replace(/[₹,]/g,'')) || 0;
-        const bank2   = parseFloat(row.cells[7]?.getAttribute('data-raw') || row.cells[7]?.innerText.replace(/[₹,]/g,'')) || 0;
-        const adj     = parseFloat(row.cells[8]?.getAttribute('data-raw') || row.cells[8]?.innerText.replace(/[₹,]/g,'')) || 0;
-        const opening = parseFloat(row.cells[9]?.getAttribute('data-raw') || (row.cells[9]?.innerText || '0').replace(/[₹,\s]/g,'')) || 0;
+        const cash    = parseFloat(row.cells[5]?.getAttribute('data-raw') || '0') || 0;
+        const bank1   = parseFloat(row.cells[6]?.getAttribute('data-raw') || '0') || 0;
+        const bank2   = parseFloat(row.cells[7]?.getAttribute('data-raw') || '0') || 0;
+        const adj     = parseFloat(row.cells[8]?.getAttribute('data-raw') || '0') || 0;
+        const opening = parseFloat((row.cells[9]?.getAttribute('data-raw') || '0')) || 0;
         const total   = cash + bank1 + bank2 + adj + opening;
         if (row.cells[10]) row.cells[10].innerText = "₹ " + formatIndianNumber(total);
     });
 }
 
-/* ── Recalculate dynamic Amount footer total ── */
 function calculateFooterAmountTotal(tableId, footerId) {
     let total = 0;
     document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => {
-        if (row.style.display !== 'none') {
-            total += parseFloat(row.cells[10]?.innerText.replace(/[₹,]/g,'') || '0') || 0;
-        }
+        if (row.style.display !== 'none')
+            total += parseFloat((row.cells[10]?.innerText || '0').replace(/[₹,]/g, '')) || 0;
     });
     document.getElementById(footerId).innerText = "₹ " + formatIndianNumber(total);
 }
 
-/* ── Summary table ── */
 function calculateSummary() {
     function sumVisible(tableId) {
         let total = 0;
         document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => {
             if (row.style.display !== 'none')
-                total += parseFloat(row.cells[10]?.innerText.replace(/[₹,]/g,'') || '0') || 0;
+                total += parseFloat((row.cells[10]?.innerText || '0').replace(/[₹,]/g, '')) || 0;
         });
         return total;
     }
-    const receiptsTotal = sumVisible('receipts-table');
-    const paymentsTotal = sumVisible('payments-table');
-    const balance = receiptsTotal - paymentsTotal;
-    document.getElementById('summary-receipts').innerText = '₹ ' + formatIndianNumber(receiptsTotal);
-    document.getElementById('summary-payments').innerText = '₹ ' + formatIndianNumber(paymentsTotal);
-    document.getElementById('summary-balance').innerText  = '₹ ' + formatIndianNumber(balance);
+    const r = sumVisible('receipts-table');
+    const p = sumVisible('payments-table');
+    document.getElementById('summary-receipts').innerText = '₹ ' + formatIndianNumber(r);
+    document.getElementById('summary-payments').innerText = '₹ ' + formatIndianNumber(p);
+    document.getElementById('summary-balance').innerText  = '₹ ' + formatIndianNumber(r - p);
 }
 
-/* ── Filtered Total row in tfoot ── */
 function addFilteredTotalRow(tableId) {
     const table = document.getElementById(tableId);
-    const tbody = table.querySelector("tbody");
-    const tfoot = table.querySelector("tfoot");
+    const tbody = table?.querySelector("tbody");
+    const tfoot = table?.querySelector("tfoot");
     if (!table || !tbody || !tfoot) return;
-
     const old = tfoot.querySelector(".filtered-total-row");
     if (old) old.remove();
 
-    let totalCash=0, totalBank1=0, totalBank2=0,
-        totalAdj=0, totalOpening=0, totalAmount=0;
-
+    let cash=0, bank1=0, bank2=0, adj=0, opening=0, amount=0;
     tbody.querySelectorAll("tr").forEach(row => {
         if (row.style.display !== "none") {
-            totalCash    += parseFloat(row.cells[5]?.innerText.replace(/,/g,'')) || 0;
-            totalBank1   += parseFloat(row.cells[6]?.innerText.replace(/,/g,'')) || 0;
-            totalBank2   += parseFloat(row.cells[7]?.innerText.replace(/,/g,'')) || 0;
-            totalAdj     += parseFloat(row.cells[8]?.innerText.replace(/,/g,'')) || 0;
-            totalOpening += parseFloat((row.cells[9]?.innerText||'0').replace(/[₹,\s]/g,'')) || 0;
-            totalAmount  += parseFloat(row.cells[10]?.innerText.replace(/[₹,]/g,'') || '0') || 0;
+            cash    += parseFloat(row.cells[5]?.getAttribute('data-raw') || '0') || 0;
+            bank1   += parseFloat(row.cells[6]?.getAttribute('data-raw') || '0') || 0;
+            bank2   += parseFloat(row.cells[7]?.getAttribute('data-raw') || '0') || 0;
+            adj     += parseFloat(row.cells[8]?.getAttribute('data-raw') || '0') || 0;
+            opening += parseFloat(row.cells[9]?.getAttribute('data-raw') || '0') || 0;
+            amount  += parseFloat((row.cells[10]?.innerText || '0').replace(/[₹,]/g,'')) || 0;
         }
     });
 
     const tr = document.createElement("tr");
     tr.classList.add("filtered-total-row");
-    tr.style.backgroundColor = "#fff59d";
-    tr.style.fontWeight = "600";
+    tr.style.cssText = "background-color:#fff59d;font-weight:600;";
     tr.innerHTML = `
         <th>Filtered Total</th>
         <td></td><td></td><td></td><td></td>
-        <td style="text-align:right;">${formatIndianNumber(totalCash)}</td>
-        <td style="text-align:right;">${formatIndianNumber(totalBank1)}</td>
-        <td style="text-align:right;">${formatIndianNumber(totalBank2)}</td>
-        <td style="text-align:right;">${formatIndianNumber(totalAdj)}</td>
-        <td style="text-align:right;">${formatIndianNumber(totalOpening)}</td>
-        <td style="text-align:right;">₹ ${formatIndianNumber(totalAmount)}</td>
-    `;
+        <td style="text-align:right;">${formatIndianNumber(cash)}</td>
+        <td style="text-align:right;">${formatIndianNumber(bank1)}</td>
+        <td style="text-align:right;">${formatIndianNumber(bank2)}</td>
+        <td style="text-align:right;">${formatIndianNumber(adj)}</td>
+        <td style="text-align:right;">${formatIndianNumber(opening)}</td>
+        <td style="text-align:right;">₹ ${formatIndianNumber(amount)}</td>`;
     tfoot.insertBefore(tr, tfoot.firstElementChild);
 }
 
-/* ── Excel export ── */
 function exportVisibleRows(tableId, filename) {
     let table = document.getElementById(tableId).cloneNode(true);
     table.querySelectorAll("tbody tr").forEach(r => { if (r.style.display === "none") r.remove(); });
@@ -480,60 +405,40 @@ function exportVisibleRows(tableId, filename) {
     XLSX.writeFile(wb, filename + ".xlsx");
 }
 
-/* ── Date filter ── */
-function filterTable(tableId, startDateId, endDateId) {
-    const rows      = document.querySelectorAll(`#${tableId} tbody tr`);
-    const startDate = document.getElementById(startDateId).value ? new Date(document.getElementById(startDateId).value) : null;
-    const endDate   = document.getElementById(endDateId).value   ? new Date(document.getElementById(endDateId).value)   : null;
-
-    rows.forEach(row => {
-        const rowDate = new Date(row.getAttribute('data-date'));
+function filterTable(tableId, startId, endId) {
+    const startDate = document.getElementById(startId).value ? new Date(document.getElementById(startId).value) : null;
+    const endDate   = document.getElementById(endId).value   ? new Date(document.getElementById(endId).value)   : null;
+    document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => {
+        const d = new Date(row.getAttribute('data-date'));
         let show = true;
-        if (startDate && rowDate < startDate) show = false;
-        if (endDate   && rowDate > endDate)   show = false;
+        if (startDate && d < startDate) show = false;
+        if (endDate   && d > endDate)   show = false;
         row.style.display = show ? '' : 'none';
     });
-
-    if (tableId === "receipts-table") calculateFooterAmountTotal("receipts-table", "receipts-total-amount");
-    if (tableId === "payments-table") calculateFooterAmountTotal("payments-table", "payments-total-amount");
+    const footerId = tableId === 'receipts-table' ? 'receipts-total-amount' : 'payments-total-amount';
+    calculateFooterAmountTotal(tableId, footerId);
     addFilteredTotalRow(tableId);
     calculateSummary();
 }
 
 /* ── Boot ── */
 document.addEventListener('DOMContentLoaded', function () {
-
-    // 1. Format cards
     formatCards();
-
-    // 2. Format static Django footer cells
     formatFooterCells();
-
-    // 3. Format data-raw cells with Indian commas
     formatRawCells("receipts-table");
     formatRawCells("payments-table");
-
-    // 4. Calculate Amount column
     calculateRowAmounts("receipts-table");
     calculateRowAmounts("payments-table");
-
-    // 5. Filtered total rows
     addFilteredTotalRow("receipts-table");
     addFilteredTotalRow("payments-table");
-
-    // 6. Dynamic footer Amount totals
     calculateFooterAmountTotal("receipts-table", "receipts-total-amount");
     calculateFooterAmountTotal("payments-table", "payments-total-amount");
-
-    // 7. Summary
     calculateSummary();
 
-    // 8. Wire date filters
     document.getElementById('receipt-start-date').addEventListener('change', () => filterTable('receipts-table','receipt-start-date','receipt-end-date'));
     document.getElementById('receipt-end-date').addEventListener('change',   () => filterTable('receipts-table','receipt-start-date','receipt-end-date'));
     document.getElementById('payment-start-date').addEventListener('change', () => filterTable('payments-table','payment-start-date','payment-end-date'));
     document.getElementById('payment-end-date').addEventListener('change',   () => filterTable('payments-table','payment-start-date','payment-end-date'));
 });
 </script>
-
 {% endblock %}

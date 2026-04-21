@@ -809,229 +809,214 @@ def closed_loans_view(request):
         'gen_no': gen_no,
     })
 #--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+import json
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 from django.shortcuts import render
+from django.utils import timezone
 from .models import Loan, LoanRepayment
 
-SWAP_LOAN_TYPES = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
+SWAP_LOAN_TYPES      = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
+EXPAND_SOURCE_TYPES  = ['THRIFT FUNDS', 'WELFARE COLLECTIONS']   # expand source entries
 
 
 def safe_decimal(value):
-    """Convert a value to Decimal safely, treating invalid strings as 0."""
     try:
-        return Decimal(value)
-    except (InvalidOperation, TypeError, ValueError):
+        return Decimal(str(value or 0).strip() or '0')
+    except Exception:
         return Decimal('0')
-from django.shortcuts import render
-from django.db.models import F
-from decimal import Decimal
 
-def safe_decimal(value):
-    try:
-        return Decimal(value or 0)
-    except:
-        return Decimal(0)
 
-from decimal import Decimal
-from datetime import datetime
+class SourceEntry:
+    """
+    Represents a single deposit entry from a Loan's source JSON field.
+    Mimics the attribute interface the template expects for a receipt row.
+    """
+    def __init__(self, loan, entry):
+        date_str = entry.get('date', '')
+        try:
+            naive_dt = datetime.strptime(date_str, '%Y-%m-%d')
+            self.created_at = timezone.make_aware(naive_dt)
+        except Exception:
+            self.created_at = loan.created_at
+
+        breakdown           = entry.get('breakdown', {})
+        self.cash           = breakdown.get('cash',           '0')
+        self.online         = breakdown.get('online',         '0')
+        self.bank1          = breakdown.get('bank1',          '0')
+        self.bank2          = breakdown.get('bank2',          '0')
+        self.adj            = breakdown.get('adj',            '0')
+        self.opening_balance = breakdown.get('opening_balance', '0')
+        self.amount         = entry.get('amount', '0')
+
+        # Keep reference to original loan so template can access loan.gen_no etc.
+        self.loan           = loan
+        self.gen_no         = loan.gen_no
+        self.name           = loan.name
+        self.code           = loan.code or str(loan.id)
+        self.type_of_loan   = loan.type_of_loan
+
 
 def cash_book(request):
-    # ------------------ Fetch existing transactions ------------------
+    # ── Fetch raw querysets ──────────────────────────────────────────────────
     transactions = list(
         LoanRepayment.objects.select_related('loan').order_by('-created_at', '-id')
     )
-
     payments = list(
         Loan.objects.all().order_by('-created_at', '-id')
     )
 
-    from decimal import Decimal
-
-    from decimal import Decimal
-
-    # ------------------ Include Cash Entries ------------------
+    # ── CashEntry rows ───────────────────────────────────────────────────────
     cash_entries = CashEntry.objects.all().order_by('-datetime')
 
     class CashBookEntry:
         def __init__(self, cash_entry):
-            raw_amount = Decimal(cash_entry.amount)
-            self.amount = abs(raw_amount)
-
-            self.cash = self.amount if cash_entry.type_of_cash == "Cash" else Decimal('0')
-            self.bank1 = self.amount if cash_entry.type_of_cash == "Bank1" else Decimal('0')
-            self.bank2 = self.amount if cash_entry.type_of_cash == "Bank2" else Decimal('0')
-            self.adj = self.amount if cash_entry.type_of_cash == "Adjustment" else Decimal('0')
-            self.opening_balance = self.amount if cash_entry.type_of_cash == "opening balance" else Decimal('0')
-
-            # 🔥 ADD THIS LINE
-            self.type_of_loan = cash_entry.type_of_loan
-
-            self.loan = type('LoanObj', (object,), {
-                'id': cash_entry.code,
-                'type_of_loan': cash_entry.type_of_loan
+            raw_amount   = Decimal(cash_entry.amount)
+            self.amount  = abs(raw_amount)
+            t            = cash_entry.type_of_cash
+            self.cash            = self.amount if t == "Cash"           else Decimal('0')
+            self.bank1           = self.amount if t == "Bank1"          else Decimal('0')
+            self.bank2           = self.amount if t == "Bank2"          else Decimal('0')
+            self.adj             = self.amount if t == "Adjustment"     else Decimal('0')
+            self.opening_balance = self.amount if t == "opening balance" else Decimal('0')
+            self.type_of_loan    = cash_entry.type_of_loan
+            self.loan            = type('LoanObj', (), {
+                'id':           cash_entry.code,
+                'type_of_loan': cash_entry.type_of_loan,
             })()
-
-            self.remarks = cash_entry.remarks
-            self.code = cash_entry.code
+            self.remarks    = cash_entry.remarks
+            self.code       = cash_entry.code
             self.created_at = cash_entry.datetime
             self.is_negative = raw_amount < 0
 
-
-    # Append to transactions or payments
     for entry in cash_entries:
-        cb_entry = CashBookEntry(entry)
-
-        # ✅ Negative values always go to payments
-        if cb_entry.is_negative:
-            payments.append(cb_entry)
-
-        # Existing swap logic
+        cb = CashBookEntry(entry)
+        if cb.is_negative:
+            payments.append(cb)
         elif entry.type_of_cash in SWAP_LOAN_TYPES:
-            payments.append(cb_entry)
-
+            payments.append(cb)
         else:
-            transactions.append(cb_entry)
+            transactions.append(cb)
 
-
-    # ---------------- Swap Logic ----------------
+    # ── Swap logic ───────────────────────────────────────────────────────────
     new_transactions, new_payments = [], []
 
     for t in transactions:
-        loan_type = getattr(t.loan, 'type_of_loan', None)
-        if loan_type in SWAP_LOAN_TYPES:
-            new_payments.append(t)
-        else:
-            new_transactions.append(t)
+        loan_type = getattr(t.loan, 'type_of_loan', None) if hasattr(t, 'loan') else None
+        (new_payments if loan_type in SWAP_LOAN_TYPES else new_transactions).append(t)
 
     for p in payments:
-        # Determine loan type depending on object
         if hasattr(p, 'loan'):
-            loan_type = getattr(p.loan, 'type_of_loan', None)  # LoanRepayment
+            loan_type = getattr(p.loan, 'type_of_loan', None)
         else:
-            loan_type = getattr(p, 'type_of_loan', None)       # Loan or CashBookEntry
-
-        if loan_type in SWAP_LOAN_TYPES:
-            new_transactions.append(p)
-        else:
-            new_payments.append(p)
+            loan_type = getattr(p, 'type_of_loan', None)
+        (new_transactions if loan_type in SWAP_LOAN_TYPES else new_payments).append(p)
 
     transactions = new_transactions
-    payments = new_payments
+    payments     = new_payments
 
-    # ---------------- Totals ----------------
-    def safe_decimal(value):
-        try:
-            return Decimal(value or 0)
-        except:
-            return Decimal(0)
-# ---------------- Include OtherCashTransaction BEFORE totals ----------------
+    # ── OtherCashTransaction ─────────────────────────────────────────────────
+    transactions.extend(OtherCashTransaction.objects.filter(transaction_type='RECEIPT'))
+    payments.extend(OtherCashTransaction.objects.filter(transaction_type='PAYMENT'))
 
-    other_receipts = list(
-        OtherCashTransaction.objects.filter(transaction_type='RECEIPT')
-    )
+    # ── Expand THRIFT / WELFARE source entries into individual rows ──────────
+    expanded_transactions = []
+    for t in transactions:
+        # Determine if this is a Loan with expandable source
+        loan_type = getattr(t, 'type_of_loan', None)
+        if loan_type is None and hasattr(t, 'loan'):
+            loan_type = getattr(t.loan, 'type_of_loan', None)
 
-    other_payments = list(
-        OtherCashTransaction.objects.filter(transaction_type='PAYMENT')
-    )
+        if (
+            loan_type in EXPAND_SOURCE_TYPES
+            and isinstance(t, Loan)           # only raw Loan objects carry source
+            and getattr(t, 'source', None)
+        ):
+            try:
+                entries = json.loads(t.source)
+                for entry in entries:
+                    expanded_transactions.append(SourceEntry(t, entry))
+                continue                       # skip the original single-row loan
+            except Exception:
+                pass                           # fall through and keep original row
 
-    transactions.extend(other_receipts)
-    payments.extend(other_payments)
+        expanded_transactions.append(t)
 
-    # ---------------- Sort by time ----------------
-    transactions.sort(key=lambda x: x.created_at, reverse=True)
+    transactions = expanded_transactions
+
+    # ── Sort ─────────────────────────────────────────────────────────────────
+    transactions.sort(
+    key=lambda x: x.created_at.replace(tzinfo=None) if x.created_at else None,
+    reverse=True
+)
     payments.sort(key=lambda x: x.created_at, reverse=True)
 
-    # ---------------- Totals (NO adj field) ----------------
-    def get_adj(obj):
-        return safe_decimal(obj.adj) if hasattr(obj, 'adj') else Decimal('0')
-
-
-    # ---------------- Totals ----------------
-# ---------------- Totals ----------------
+    # ── Helpers ──────────────────────────────────────────────────────────────
     def get_adj(obj):
         return safe_decimal(obj.adj) if hasattr(obj, 'adj') else Decimal('0')
 
     def get_total(obj):
         return (
-            safe_decimal(getattr(obj, 'cash', 0)) +
-            safe_decimal(getattr(obj, 'bank1', 0)) +
-            safe_decimal(getattr(obj, 'bank2', 0)) +
+            safe_decimal(getattr(obj, 'cash',            0)) +
+            safe_decimal(getattr(obj, 'bank1',           0)) +
+            safe_decimal(getattr(obj, 'bank2',           0)) +
             get_adj(obj) +
-            safe_decimal(getattr(obj, 'opening_balance', 0))   # ✅ ADD THIS
+            safe_decimal(getattr(obj, 'opening_balance', 0))
         )
-    
 
-    receipts_opening = sum(safe_decimal(getattr(t, 'opening_balance', 0)) for t in transactions)
-    payments_opening = sum(safe_decimal(getattr(p, 'opening_balance', 0)) for p in payments)
-
+    # ── Totals ───────────────────────────────────────────────────────────────
     transactions_totals = {
-        'total_cash': sum(safe_decimal(getattr(t, 'cash', 0)) for t in transactions),
-        'total_bank1': sum(safe_decimal(getattr(t, 'bank1', 0)) for t in transactions),
-        'total_bank2': sum(safe_decimal(getattr(t, 'bank2', 0)) for t in transactions),
-        'total_adj': sum(get_adj(t) for t in transactions),
+        'total_cash':            sum(safe_decimal(getattr(t, 'cash',            0)) for t in transactions),
+        'total_bank1':           sum(safe_decimal(getattr(t, 'bank1',           0)) for t in transactions),
+        'total_bank2':           sum(safe_decimal(getattr(t, 'bank2',           0)) for t in transactions),
+        'total_adj':             sum(get_adj(t)                                     for t in transactions),
         'total_opening_balance': sum(safe_decimal(getattr(t, 'opening_balance', 0)) for t in transactions),
     }
 
     payments_totals = {
-        'total_cash': sum(safe_decimal(getattr(p, 'cash', 0)) for p in payments),
-        'total_bank1': sum(safe_decimal(getattr(p, 'bank1', 0)) for p in payments),
-        'total_bank2': sum(safe_decimal(getattr(p, 'bank2', 0)) for p in payments),
-        'total_adj': sum(get_adj(p) for p in payments),
+        'total_cash':            sum(safe_decimal(getattr(p, 'cash',            0)) for p in payments),
+        'total_bank1':           sum(safe_decimal(getattr(p, 'bank1',           0)) for p in payments),
+        'total_bank2':           sum(safe_decimal(getattr(p, 'bank2',           0)) for p in payments),
+        'total_adj':             sum(get_adj(p)                                     for p in payments),
         'total_opening_balance': sum(safe_decimal(getattr(p, 'opening_balance', 0)) for p in payments),
-
-        # 🔥 FIXED TOTAL AMOUNT
-        'total_amount': sum(get_total(p) for p in payments)
+        'total_amount':          sum(get_total(p)                                   for p in payments),
     }
-
-    
 
     receipts_totals = {
-        'cash': sum(safe_decimal(getattr(t, 'cash', 0)) for t in transactions),
-        'bank1': sum(safe_decimal(getattr(t, 'bank1', 0)) for t in transactions),
-        'bank2': sum(safe_decimal(getattr(t, 'bank2', 0)) for t in transactions),
-        'adj': sum(get_adj(t) for t in transactions),
+        'cash':  transactions_totals['total_cash'],
+        'bank1': transactions_totals['total_bank1'],
+        'bank2': transactions_totals['total_bank2'],
+        'adj':   transactions_totals['total_adj'],
+    }
+    payments_totals_cards = {
+        'cash':  payments_totals['total_cash'],
+        'bank1': payments_totals['total_bank1'],
+        'bank2': payments_totals['total_bank2'],
+        'adj':   payments_totals['total_adj'],
     }
 
-    payments_totals_cards = {
-        'cash': sum(safe_decimal(getattr(p, 'cash', 0)) for p in payments),
-        'bank1': sum(safe_decimal(getattr(p, 'bank1', 0)) for p in payments),
-        'bank2': sum(safe_decimal(getattr(p, 'bank2', 0)) for p in payments),
-        'adj': sum(get_adj(p) for p in payments),
-    }
+    receipts_opening = transactions_totals['total_opening_balance']
+    payments_opening = payments_totals['total_opening_balance']
 
     withdrawals = {
-        'cash': receipts_totals['cash'] - payments_totals_cards['cash'],
-        'bank1': receipts_totals['bank1'] - payments_totals_cards['bank1'],
-        'bank2': receipts_totals['bank2'] - payments_totals_cards['bank2'],
-        'adj': receipts_totals['adj'] - payments_totals_cards['adj'],
-        'opening_balance': receipts_opening - payments_opening   # ✅ ADD THIS
-        
+        'cash':            receipts_totals['cash']  - payments_totals_cards['cash'],
+        'bank1':           receipts_totals['bank1'] - payments_totals_cards['bank1'],
+        'bank2':           receipts_totals['bank2'] - payments_totals_cards['bank2'],
+        'adj':             receipts_totals['adj']   - payments_totals_cards['adj'],
+        'opening_balance': receipts_opening         - payments_opening,
     }
 
-    # ---------------- Final balances ----------------
-    total_receipts = (
-        transactions_totals['total_cash'] +
-        transactions_totals['total_bank1'] +
-        transactions_totals['total_bank2'] +
-        transactions_totals['total_adj']+
-        transactions_totals['total_opening_balance']   # ✅ ADD
-    )
-
-    # 🔥 USE FIXED TOTAL
+    total_receipts = sum(transactions_totals.values())
     total_payments = payments_totals['total_amount']
-
     available_balance = total_receipts - total_payments
 
-
     return render(request, 'cash_book.html', {
-        'transactions': transactions,
-        'payments': payments,
-        'transactions_totals': transactions_totals,
-        'payments_totals': payments_totals,
-        'available_balance': available_balance,
-
-        # 🔥 NEW (for cards)
-        'withdrawals': withdrawals,
+        'transactions':          transactions,
+        'payments':              payments,
+        'transactions_totals':   transactions_totals,
+        'payments_totals':       payments_totals,
+        'available_balance':     available_balance,
+        'withdrawals':           withdrawals,
     })
 from datetime import datetime
 def loan_transactions_detail(request, loan_id, month):
@@ -2150,232 +2135,232 @@ def download_receipts(request, loan_type=None):
 
     workbook.close()
     return response
-from decimal import Decimal
-from django.shortcuts import render
-from django.db.models import Sum, Value, DecimalField
-from django.db.models.functions import Coalesce
-from .models import Loan, LoanRepayment
+# from decimal import Decimal
+# from django.shortcuts import render
+# from django.db.models import Sum, Value, DecimalField
+# from django.db.models.functions import Coalesce
+# from .models import Loan, LoanRepayment
 
 
-# --------------------------------------------------
-# CONSTANTS
-# --------------------------------------------------
+# # --------------------------------------------------
+# # CONSTANTS
+# # --------------------------------------------------
 
-SWAP_LOAN_TYPES = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
-
-
-# --------------------------------------------------
-# HELPERS
-# --------------------------------------------------
-
-def fmt(dt):
-    if dt:
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    return "-"
+# SWAP_LOAN_TYPES = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
 
 
-def safe_decimal(value):
-    try:
-        return Decimal(value or 0)
-    except:
-        return Decimal('0')
+# # --------------------------------------------------
+# # HELPERS
+# # --------------------------------------------------
+
+# def fmt(dt):
+#     if dt:
+#         return dt.strftime("%Y-%m-%d %H:%M:%S")
+#     return "-"
 
 
-def normalize_type(t):
-    if not t:
-        return ""
-    return t.upper().replace(" ", "_").replace("/", "_").replace("-", "_")
+# def safe_decimal(value):
+#     try:
+#         return Decimal(value or 0)
+#     except:
+#         return Decimal('0')
 
 
-def get_loan_type(obj):
-    if hasattr(obj, "loan") and obj.loan:
-        t = obj.loan.type_of_loan
-    else:
-        t = getattr(obj, "type_of_loan", "-")
-
-    return normalize_type(t)
+# def normalize_type(t):
+#     if not t:
+#         return ""
+#     return t.upper().replace(" ", "_").replace("/", "_").replace("-", "_")
 
 
-# --------------------------------------------------
-# CASH BOOK LOGIC
-# --------------------------------------------------
+# def get_loan_type(obj):
+#     if hasattr(obj, "loan") and obj.loan:
+#         t = obj.loan.type_of_loan
+#     else:
+#         t = getattr(obj, "type_of_loan", "-")
 
-def cash_book_swap_logic():
-    """
-    Correct classification:
-    - LoanRepayment = ALWAYS RECEIPT
-    - Loan = ALWAYS PAYMENT
-    - Swap only the 3 deposit types
-    """
-
-    repayments = list(
-        LoanRepayment.objects.select_related('loan')
-        .order_by('-created_at', '-id')
-    )
-
-    loans = list(
-        Loan.objects.all()
-        .order_by('-created_at', '-id')
-    )
-
-    payments = []
-    receipts = []
-
-    for r in repayments:
-        loan_type = r.loan.type_of_loan if r.loan else ""
-        if loan_type in SWAP_LOAN_TYPES:
-            payments.append(r)
-        else:
-            receipts.append(r)
-
-    for l in loans:
-        loan_type = l.type_of_loan
-        if loan_type in SWAP_LOAN_TYPES:
-            receipts.append(l)
-        else:
-            payments.append(l)
-
-    return payments, receipts
+#     return normalize_type(t)
 
 
-# --------------------------------------------------
-# MAIN VIEW
-# --------------------------------------------------
+# # --------------------------------------------------
+# # CASH BOOK LOGIC
+# # --------------------------------------------------
 
-def reports_list_view(request):
-    report_type = normalize_type(request.GET.get('type', ''))
-    view_mode = request.GET.get('view', 'all')
+# def cash_book_swap_logic():
+#     """
+#     Correct classification:
+#     - LoanRepayment = ALWAYS RECEIPT
+#     - Loan = ALWAYS PAYMENT
+#     - Swap only the 3 deposit types
+#     """
 
-    LOAN_TYPES = ['MTL LOAN', 'FDL LOAN', 'KVP/NSC LOAN']
-    DEPOSIT_TYPES = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
-    OTHER_TYPES = ['ADMISSION FEES', 'OTHER RECEIPTS', 'CASH WITHDRAWALS']
+#     repayments = list(
+#         LoanRepayment.objects.select_related('loan')
+#         .order_by('-created_at', '-id')
+#     )
 
-    ALL_TYPES = LOAN_TYPES + DEPOSIT_TYPES + OTHER_TYPES
-    type_map = {normalize_type(t): t for t in ALL_TYPES}
+#     loans = list(
+#         Loan.objects.all()
+#         .order_by('-created_at', '-id')
+#     )
 
-    if report_type not in type_map:
-        return render(request, 'reports_list.html', {
-            'error': f"Unknown report type: {report_type}"
-        })
+#     payments = []
+#     receipts = []
 
-    selected_type = type_map[report_type]
-    rows = []
+#     for r in repayments:
+#         loan_type = r.loan.type_of_loan if r.loan else ""
+#         if loan_type in SWAP_LOAN_TYPES:
+#             payments.append(r)
+#         else:
+#             receipts.append(r)
 
-    payments, receipts = cash_book_swap_logic()
+#     for l in loans:
+#         loan_type = l.type_of_loan
+#         if loan_type in SWAP_LOAN_TYPES:
+#             receipts.append(l)
+#         else:
+#             payments.append(l)
 
-    # --------------------------------------------------
-    # PAYMENTS VIEW
-    # --------------------------------------------------
-    if view_mode == 'payments':
+#     return payments, receipts
 
-        filtered = [p for p in payments if get_loan_type(p) == report_type]
 
-        for p in filtered:
-            adj = safe_decimal(getattr(p, "adj", 0))
+# # --------------------------------------------------
+# # MAIN VIEW
+# # --------------------------------------------------
 
-            if hasattr(p, "loan") and p.loan:
-                ln = p.loan
-                rows.append({
-                    'loan_id': ln.id,
-                    'gen_no': ln.gen_no,
-                    'name': ln.name,
-                    'ref': ln.code,
-                    'cash': safe_decimal(getattr(p, "cash", 0)),
-                    'opening_balance': safe_decimal(getattr(p, "opening_balance", 0)),
-                    'bank1': safe_decimal(getattr(p, "bank1", 0)),
-                    'bank2': safe_decimal(getattr(p, "bank2", 0)),
-                    'adjustment': adj,
-                    'created_at': fmt(getattr(p, "created_at", None)),
-                })
-            else:
-                rows.append({
-                    'loan_id': p.id,
-                    'gen_no': getattr(p, "gen_no", "-"),
-                    'name': getattr(p, "name", "-"),
-                    'ref': getattr(p, "code", "-"),
-                    'cash': safe_decimal(getattr(p, "cash", 0)),
-                    'opening_balance': safe_decimal(getattr(p, "opening_balance", 0)),
-                    'bank1': safe_decimal(getattr(p, "bank1", 0)),
-                    'bank2': safe_decimal(getattr(p, "bank2", 0)),
-                    'adjustment': adj,
-                    'created_at': fmt(getattr(p, "created_at", None)),
-                })
+# def reports_list_view(request):
+#     report_type = normalize_type(request.GET.get('type', ''))
+#     view_mode = request.GET.get('view', 'all')
 
-    # --------------------------------------------------
-    # RECEIPTS VIEW
-    # --------------------------------------------------
-    elif view_mode == 'receipts':
+#     LOAN_TYPES = ['MTL LOAN', 'FDL LOAN', 'KVP/NSC LOAN']
+#     DEPOSIT_TYPES = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
+#     OTHER_TYPES = ['ADMISSION FEES', 'OTHER RECEIPTS', 'CASH WITHDRAWALS']
 
-        filtered = [r for r in receipts if get_loan_type(r) == report_type]
+#     ALL_TYPES = LOAN_TYPES + DEPOSIT_TYPES + OTHER_TYPES
+#     type_map = {normalize_type(t): t for t in ALL_TYPES}
 
-        for r in filtered:
-            adj = safe_decimal(getattr(r, "adj", 0))
+#     if report_type not in type_map:
+#         return render(request, 'reports_list.html', {
+#             'error': f"Unknown report type: {report_type}"
+#         })
 
-            if hasattr(r, "loan") and r.loan:
-                ln = r.loan
-                rows.append({
-                    'loan_id': ln.id,
-                    'gen_no': ln.gen_no,
-                    'name': ln.name,
-                    'ref': ln.code,
-                    'cash': safe_decimal(getattr(r, "cash", 0)),
-                    'opening_balance': safe_decimal(getattr(r, "opening_balance", 0)),
-                    'bank1': safe_decimal(getattr(r, "bank1", 0)),
-                    'bank2': safe_decimal(getattr(r, "bank2", 0)),
-                    'adjustment': adj,
-                    'created_at': fmt(getattr(r, "created_at", None)),
-                })
-            else:
-                rows.append({
-                    'loan_id': r.id,
-                    'gen_no': getattr(r, "gen_no", "-"),
-                    'name': getattr(r, "name", "-"),
-                    'ref': getattr(r, "code", "-"),
-                    'cash': safe_decimal(getattr(r, "cash", 0)),
-                    'opening_balance': safe_decimal(getattr(r, "opening_balance", 0)),
-                    'bank1': safe_decimal(getattr(r, "bank1", 0)),
-                    'bank2': safe_decimal(getattr(r, "bank2", 0)),
-                    'adjustment': adj,
-                    'created_at': fmt(getattr(r, "created_at", None)),
-                })
+#     selected_type = type_map[report_type]
+#     rows = []
 
-    # --------------------------------------------------
-    # DEFAULT VIEW (ALL GEN NO)
-    # --------------------------------------------------
-    else:
-        loans_qs = Loan.objects.filter(
-            type_of_loan=selected_type
-        ).order_by('gen_no', 'id')
+#     payments, receipts = cash_book_swap_logic()
 
-        for loan in loans_qs:
+#     # --------------------------------------------------
+#     # PAYMENTS VIEW
+#     # --------------------------------------------------
+#     if view_mode == 'payments':
 
-            if selected_type in OTHER_TYPES:
-                rows.append({
-                    'loan_id': loan.id,
-                    'gen_no': loan.gen_no,
-                    'name': loan.name,
-                    'ref': loan.code,
-                    'balance': safe_decimal(getattr(loan, "amount", 0)),
-                    'interest': None,
-                    'created_at': fmt(getattr(loan, "created_at", None)),
-                })
-            else:
-                rows.append({
-                    'loan_id': loan.id,
-                    'gen_no': loan.gen_no,
-                    'name': loan.name,
-                    'ref': loan.code,
-                    'balance': safe_decimal(getattr(loan, "balance", 0)),
-                    'interest': safe_decimal(getattr(loan, "interest", 0)),
-                    'created_at': fmt(getattr(loan, "created_at", None)),
-                })
+#         filtered = [p for p in payments if get_loan_type(p) == report_type]
 
-    return render(request, 'reports_list.html', {
-        'report_type': selected_type,
-        'rows': rows,
-        'is_loan_or_deposit': selected_type not in OTHER_TYPES,
-        'view_mode': view_mode,
-    })
+#         for p in filtered:
+#             adj = safe_decimal(getattr(p, "adj", 0))
+
+#             if hasattr(p, "loan") and p.loan:
+#                 ln = p.loan
+#                 rows.append({
+#                     'loan_id': ln.id,
+#                     'gen_no': ln.gen_no,
+#                     'name': ln.name,
+#                     'ref': ln.code,
+#                     'cash': safe_decimal(getattr(p, "cash", 0)),
+#                     'opening_balance': safe_decimal(getattr(p, "opening_balance", 0)),
+#                     'bank1': safe_decimal(getattr(p, "bank1", 0)),
+#                     'bank2': safe_decimal(getattr(p, "bank2", 0)),
+#                     'adjustment': adj,
+#                     'created_at': fmt(getattr(p, "created_at", None)),
+#                 })
+#             else:
+#                 rows.append({
+#                     'loan_id': p.id,
+#                     'gen_no': getattr(p, "gen_no", "-"),
+#                     'name': getattr(p, "name", "-"),
+#                     'ref': getattr(p, "code", "-"),
+#                     'cash': safe_decimal(getattr(p, "cash", 0)),
+#                     'opening_balance': safe_decimal(getattr(p, "opening_balance", 0)),
+#                     'bank1': safe_decimal(getattr(p, "bank1", 0)),
+#                     'bank2': safe_decimal(getattr(p, "bank2", 0)),
+#                     'adjustment': adj,
+#                     'created_at': fmt(getattr(p, "created_at", None)),
+#                 })
+
+#     # --------------------------------------------------
+#     # RECEIPTS VIEW
+#     # --------------------------------------------------
+#     elif view_mode == 'receipts':
+
+#         filtered = [r for r in receipts if get_loan_type(r) == report_type]
+
+#         for r in filtered:
+#             adj = safe_decimal(getattr(r, "adj", 0))
+
+#             if hasattr(r, "loan") and r.loan:
+#                 ln = r.loan
+#                 rows.append({
+#                     'loan_id': ln.id,
+#                     'gen_no': ln.gen_no,
+#                     'name': ln.name,
+#                     'ref': ln.code,
+#                     'cash': safe_decimal(getattr(r, "cash", 0)),
+#                     'opening_balance': safe_decimal(getattr(r, "opening_balance", 0)),
+#                     'bank1': safe_decimal(getattr(r, "bank1", 0)),
+#                     'bank2': safe_decimal(getattr(r, "bank2", 0)),
+#                     'adjustment': adj,
+#                     'created_at': fmt(getattr(r, "created_at", None)),
+#                 })
+#             else:
+#                 rows.append({
+#                     'loan_id': r.id,
+#                     'gen_no': getattr(r, "gen_no", "-"),
+#                     'name': getattr(r, "name", "-"),
+#                     'ref': getattr(r, "code", "-"),
+#                     'cash': safe_decimal(getattr(r, "cash", 0)),
+#                     'opening_balance': safe_decimal(getattr(r, "opening_balance", 0)),
+#                     'bank1': safe_decimal(getattr(r, "bank1", 0)),
+#                     'bank2': safe_decimal(getattr(r, "bank2", 0)),
+#                     'adjustment': adj,
+#                     'created_at': fmt(getattr(r, "created_at", None)),
+#                 })
+
+#     # --------------------------------------------------
+#     # DEFAULT VIEW (ALL GEN NO)
+#     # --------------------------------------------------
+#     else:
+#         loans_qs = Loan.objects.filter(
+#             type_of_loan=selected_type
+#         ).order_by('gen_no', 'id')
+
+#         for loan in loans_qs:
+
+#             if selected_type in OTHER_TYPES:
+#                 rows.append({
+#                     'loan_id': loan.id,
+#                     'gen_no': loan.gen_no,
+#                     'name': loan.name,
+#                     'ref': loan.code,
+#                     'balance': safe_decimal(getattr(loan, "amount", 0)),
+#                     'interest': None,
+#                     'created_at': fmt(getattr(loan, "created_at", None)),
+#                 })
+#             else:
+#                 rows.append({
+#                     'loan_id': loan.id,
+#                     'gen_no': loan.gen_no,
+#                     'name': loan.name,
+#                     'ref': loan.code,
+#                     'balance': safe_decimal(getattr(loan, "balance", 0)),
+#                     'interest': safe_decimal(getattr(loan, "interest", 0)),
+#                     'created_at': fmt(getattr(loan, "created_at", None)),
+#                 })
+
+#     return render(request, 'reports_list.html', {
+#         'report_type': selected_type,
+#         'rows': rows,
+#         'is_loan_or_deposit': selected_type not in OTHER_TYPES,
+#         'view_mode': view_mode,
+#     })
 
 from django.http import HttpResponse
 import csv
@@ -3785,42 +3770,40 @@ from datetime import datetime
 from .models import Loan, LoanRepayment
 from .services import process_loan_repayment
 from .models import generate_unique_repayment_code
-
 def loanadd(request):
     VALID_LOAN_TYPES = [
-    "MTL LOAN",
-    "FDL LOAN",
-    "KVP/NSC LOAN",
-    "THRIFT FUNDS",
-    "FIXED DEPOSITS",
-    "WELFARE COLLECTIONS",]
-
+        "MTL LOAN",
+        "FDL LOAN",
+        "KVP/NSC LOAN",
+        "THRIFT FUNDS",
+        "FIXED DEPOSITS",
+        "WELFARE COLLECTIONS",
+    ]
 
     PAYMENT_TYPES = [
-    "SALARY PAID",
-    "OFFICE EXPENSES",
-    "OTHER PAYMENTS",
-]
+        "SALARY PAID",
+        "OFFICE EXPENSES",
+        "OTHER PAYMENTS",
+    ]
 
     RECEIPT_TYPES = [
-    "ADMISSION FEES",
-    "OTHER RECEIPTS",
-    "SHARE CAPITAL"
-]
-
+        "ADMISSION FEES",
+        "OTHER RECEIPTS",
+        "SHARE CAPITAL",
+    ]
 
     if request.method == "POST":
-        modes     = request.POST.getlist('mode[]')
-        gen_nos   = request.POST.getlist('gen_no[]')
-        names     = request.POST.getlist('name[]')
-        types     = request.POST.getlist('loan_type[]')
-        cashes    = request.POST.getlist('cash[]')
-        bank1s    = request.POST.getlist('bank1[]')
-        bank2s    = request.POST.getlist('bank2[]')
-        adjs      = request.POST.getlist('adj[]')
+        modes            = request.POST.getlist('mode[]')
+        gen_nos          = request.POST.getlist('gen_no[]')
+        names            = request.POST.getlist('name[]')
+        types            = request.POST.getlist('loan_type[]')
+        cashes           = request.POST.getlist('cash[]')
+        bank1s           = request.POST.getlist('bank1[]')
+        bank2s           = request.POST.getlist('bank2[]')
+        adjs             = request.POST.getlist('adj[]')
         opening_balances = request.POST.getlist('opening_balance[]')
-        dates     = request.POST.getlist('date[]')
-        loan_ids  = request.POST.getlist('loan_id[]')
+        dates            = request.POST.getlist('date[]')
+        loan_ids         = request.POST.getlist('loan_id[]')
 
         def to_decimal(val):
             try:
@@ -3829,61 +3812,58 @@ def loanadd(request):
                 return Decimal('0')
 
         for i in range(len(gen_nos)):
-            mode = modes[i]
+            mode   = modes[i]
             gen_no = gen_nos[i].strip()
 
             if not mode or not gen_no:
                 continue
 
-            name = names[i].strip() if i < len(names) else ""
-            loan_type = types[i].strip() if i < len(types) else ""
+            name      = names[i].strip()     if i < len(names)     else ""
+            loan_type = types[i].strip()     if i < len(types)     else ""
 
-            cash  = to_decimal(cashes[i])
-            bank1 = to_decimal(bank1s[i])
-            bank2 = to_decimal(bank2s[i])
-            adj   = to_decimal(adjs[i])
+            cash            = to_decimal(cashes[i])
+            bank1           = to_decimal(bank1s[i])
+            bank2           = to_decimal(bank2s[i])
+            adj             = to_decimal(adjs[i])
             opening_balance = to_decimal(opening_balances[i]) if i < len(opening_balances) else Decimal('0')
 
             if mode == "issue":
                 total_amount = cash + bank1 + bank2 + adj + opening_balance
             else:
                 total_amount = cash + bank1 + bank2 + adj
+
             if total_amount <= 0:
                 continue
 
-            # Date
+            # ── Parse date ───────────────────────────────────────────────
             if dates[i]:
                 try:
-                    created_at = datetime.strptime(dates[i], "%Y-%m-%d")
+                    created_at   = datetime.strptime(dates[i], "%Y-%m-%d")
+                    deposit_date = created_at.date()
                 except ValueError:
-                    created_at = timezone.now()
+                    created_at   = timezone.now()
+                    deposit_date = created_at.date()
             else:
-                created_at = timezone.now()
+                created_at   = timezone.now()
+                deposit_date = created_at.date()
 
-            # ==================================================
+            # ============================================================
             # 🟢 ISSUE NEW LOAN
-            # ==================================================
-# ==================================================
-# 🟢 ISSUE NEW LOAN
+            # ============================================================
             if mode == "issue":
                 if not loan_type:
                     continue
 
-                # ==================================================
-                # 🟡 HANDLE NON-LOAN TYPES → OtherCashTransaction
-                # ==================================================
+                # ── Non-loan types → OtherCashTransaction ────────────────
                 if loan_type not in VALID_LOAN_TYPES:
-
-                    # 🔥 Decide transaction type dynamically
                     if loan_type in PAYMENT_TYPES:
                         transaction_type = 'PAYMENT'
                     elif loan_type in RECEIPT_TYPES:
                         transaction_type = 'RECEIPT'
                     else:
-                        # fallback (optional safety)
                         transaction_type = 'PAYMENT'
 
-                    other_txn = OtherCashTransaction(
+                    OtherCashTransaction(
                         transaction_type=transaction_type,
                         gen_no=gen_no,
                         name=name,
@@ -3891,15 +3871,49 @@ def loanadd(request):
                         cash=cash,
                         bank1=bank1,
                         bank2=bank2,
-                        created_at=created_at
-                    )
+                        created_at=created_at,
+                    ).save()
+                    continue
 
-                    other_txn.save()
-                    continue  # 🚀 skip Loan
+                # ── Build deposit entry (same shape as submit_new_table) ──
+                def build_deposit_entry():
+                    entry = {
+                        'date':      deposit_date.isoformat(),
+                        'amount':    str(total_amount),
+                        'breakdown': {}
+                    }
+                    if cash            > 0: entry['breakdown']['cash']            = str(cash)
+                    if bank1           > 0: entry['breakdown']['bank1']           = str(bank1)
+                    if bank2           > 0: entry['breakdown']['bank2']           = str(bank2)
+                    if adj             > 0: entry['breakdown']['adj']             = str(adj)
+                    if opening_balance > 0: entry['breakdown']['opening_balance'] = str(opening_balance)
+                    return entry
 
-                # ==================================================
-                # 🟢 NORMAL LOAN FLOW
-                # ==================================================
+                # ── Accumulative types: append to existing loan ───────────
+                if loan_type in ACCUMULATIVE_TYPES:
+                    existing_loan = Loan.objects.filter(
+                        gen_no=gen_no,
+                        type_of_loan=loan_type,
+                        loan_status='Active'
+                    ).order_by('created_at', 'id').first()
+
+                    if existing_loan:
+                        # Append new deposit entry to source
+                        entries = get_deposit_entries(existing_loan)
+                        entries.append(build_deposit_entry())
+                        set_deposit_entries(existing_loan, entries)
+
+                        existing_loan.amount = safe_decimal(existing_loan.amount) + total_amount
+                        existing_loan.save()
+
+                        process_deposit_account(gen_no, loan_type)
+                        continue   # ✅ done — do NOT create a new loan
+
+                    # No existing active loan → fall through and create first one
+
+                # ── Standard loan OR first-ever accumulative deposit ──────
+                user_loan_id = loan_ids[i].strip() if i < len(loan_ids) else ""
+
                 loan = Loan(
                     gen_no=gen_no,
                     name=name,
@@ -3911,22 +3925,28 @@ def loanadd(request):
                     adj=str(adj),
                     opening_balance=opening_balance,
                     created_at=created_at,
-                    loan_status='Active'
+                    loan_status='Active',
                 )
 
-                user_loan_id = loan_ids[i].strip() if i < len(loan_ids) else ""
                 if user_loan_id:
                     loan.code = user_loan_id
 
-                loan.save()
+                # For first accumulative deposit, seed source with this entry
+                if loan_type in ACCUMULATIVE_TYPES:
+                    loan.source = json.dumps([build_deposit_entry()])
 
+                loan.save()
                 loan.interest = Decimal('0.00')
                 loan.save(update_fields=['interest'])
-                process_loan_repayment(loan)
-            # ==================================================
+
+                if loan_type in ACCUMULATIVE_TYPES:
+                    process_deposit_account(gen_no, loan_type)
+                else:
+                    process_loan_repayment(loan)
+
+            # ============================================================
             # 🔵 MANAGE EXISTING LOAN (REPAYMENT)
-            # ==================================================
-# 🔵 MANAGE EXISTING LOAN (REPAYMENT)
+            # ============================================================
             elif mode == "existing":
                 loan_code = loan_ids[i].strip()
                 if not loan_code:
@@ -3935,10 +3955,10 @@ def loanadd(request):
                 try:
                     loan = Loan.objects.get(code=loan_code)
 
-                    repayment = LoanRepayment.objects.create(
+                    LoanRepayment.objects.create(
                         loan=loan,
                         total_payment=total_amount,
-                        paid_to_interest=Decimal('0.00'),  # initially zero
+                        paid_to_interest=Decimal('0.00'),
                         paid_to_principal=Decimal('0.00'),
                         payment_mode='mixed',
                         remarks='',
@@ -3948,14 +3968,11 @@ def loanadd(request):
                         adj=adj,
                         code=generate_unique_repayment_code(),
                         type_of_loan=loan.type_of_loan,
-                        created_at=created_at
+                        created_at=created_at,
                     )
 
-                    # 🟢 Reset interest before recalculation to avoid double-counting
                     loan.interest = Decimal('0.00')
                     loan.save(update_fields=['interest'])
-
-                    # Recalculate interest and principal allocations
                     process_loan_repayment(loan)
 
                 except Loan.DoesNotExist:
@@ -5257,7 +5274,7 @@ from .services import process_loan_repayment, process_deposit_account, safe_deci
 from .services import process_loan_repayment, process_deposit_account, safe_decimal, ACCUMULATIVE_TYPES
 
 
-
+import json
 from datetime import datetime, date
 from django.http import JsonResponse
 from django.db import IntegrityError
@@ -5271,6 +5288,8 @@ from .services import (
     set_deposit_entries,
     ACCUMULATIVE_TYPES,
 )
+
+
 @transaction.atomic
 def submit_new_table(request):
     if request.method != 'POST':
@@ -5297,12 +5316,16 @@ def submit_new_table(request):
 
     def to_decimal(val):
         try:
-            return Decimal(str(val).strip())
+            cleaned = str(val).strip()
+            if not cleaned or cleaned == '-':
+                return Decimal('0')
+            return Decimal(cleaned)
         except Exception:
             return Decimal('0')
 
     amt           = to_decimal(amount)
     cash_d        = to_decimal(cash)
+    online_d      = to_decimal(online)
     bank1_d       = to_decimal(bank1)
     bank2_d       = to_decimal(bank2)
     adj_d         = to_decimal(adj)
@@ -5324,6 +5347,21 @@ def submit_new_table(request):
             'message': f'Reference "{ref}" already exists.'
         }, status=400)
 
+    # ── Build deposit entry with full payment breakdown ────────────────────────
+    def build_deposit_entry():
+        entry = {
+            'date':      deposit_date.isoformat(),
+            'amount':    str(amt),
+            'breakdown': {}
+        }
+        if cash_d        > 0: entry['breakdown']['cash']            = str(cash_d)
+        if online_d      > 0: entry['breakdown']['online']          = str(online_d)
+        if bank1_d       > 0: entry['breakdown']['bank1']           = str(bank1_d)
+        if bank2_d       > 0: entry['breakdown']['bank2']           = str(bank2_d)
+        if adj_d         > 0: entry['breakdown']['adj']             = str(adj_d)
+        if opening_bal_d > 0: entry['breakdown']['opening_balance'] = str(opening_bal_d)
+        return entry
+
     # ── Accumulative types: update existing loan, never create a new one ──────
     if loan_type in ACCUMULATIVE_TYPES:
         existing_loan = Loan.objects.filter(
@@ -5333,19 +5371,13 @@ def submit_new_table(request):
         ).order_by('created_at', 'id').first()
 
         if existing_loan:
-            # Append this deposit as its own dated entry in loan.source
             entries = get_deposit_entries(existing_loan)
-            entries.append({
-                'date':   deposit_date.isoformat(),
-                'amount': str(amt),
-            })
+            entries.append(build_deposit_entry())
             set_deposit_entries(existing_loan, entries)
             existing_loan.amount = safe_decimal(existing_loan.amount) + amt
             existing_loan.save()
 
-            # Recalculate interest across full deposit timeline
             process_deposit_account(gen_no, loan_type)
-
             return JsonResponse({'status': 'success', 'message': 'Deposit added to existing account'})
 
         # No existing loan → fall through and create the first one below
@@ -5378,11 +5410,7 @@ def submit_new_table(request):
 
     # For first accumulative deposit, initialise source with this deposit
     if loan_type in ACCUMULATIVE_TYPES:
-        import json
-        loan.source = json.dumps([{
-            'date':   deposit_date.isoformat(),
-            'amount': str(amt),
-        }])
+        loan.source = json.dumps([build_deposit_entry()])
 
     try:
         loan.save()
@@ -5399,3 +5427,294 @@ def submit_new_table(request):
 
     send_loan_email(user.Email)
     return JsonResponse({'status': 'success', 'message': 'New loan created'})
+
+
+
+
+
+
+
+import json
+from decimal import Decimal, InvalidOperation
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse
+from .models import Loan, LoanRepayment
+
+REPORT_LOAN_TYPES    = ['MTL LOAN', 'FDL LOAN', 'KVP/NSC LOAN']
+REPORT_DEPOSIT_TYPES = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
+REPORT_OTHER_TYPES   = ['ADMISSION FEES', 'OTHER RECEIPTS', 'CASH WITHDRAWALS']
+REPORT_ALL_TYPES     = REPORT_LOAN_TYPES + REPORT_DEPOSIT_TYPES + REPORT_OTHER_TYPES
+
+
+def rpt_normalize(t):
+     return t.strip().upper().replace('_', ' ')
+
+
+def rpt_safe_decimal(value):
+    try:
+        return Decimal(str(value or '0').strip() or '0')
+    except Exception:
+        return Decimal('0')
+
+
+def rpt_fmt(dt):
+    if not dt:
+        return ""
+    return str(dt)[:19]
+
+
+def rpt_get_loan_type(obj):
+    if hasattr(obj, 'loan') and obj.loan:
+        return rpt_normalize(getattr(obj.loan, 'type_of_loan', ''))
+    return rpt_normalize(getattr(obj, 'type_of_loan', ''))
+
+
+def rpt_cash_book_swap():
+    """
+    Returns (payments_list, receipts_list) mirroring cash_book swap logic.
+    Prefixed rpt_ to avoid collision with the cash_book view helpers.
+    """
+    SWAP_TYPES = ['FIXED DEPOSITS', 'THRIFT FUNDS', 'WELFARE COLLECTIONS']
+
+    transactions = list(
+        LoanRepayment.objects.select_related('loan').order_by('-created_at', '-id')
+    )
+    payments = list(
+        Loan.objects.all().order_by('-created_at', '-id')
+    )
+
+    for entry in CashEntry.objects.all().order_by('-datetime'):
+        raw = Decimal(entry.amount)
+        ab  = abs(raw)
+        t   = entry.type_of_cash
+        cb  = type('RptCB', (), {
+            'amount':          ab,
+            'cash':            ab if t == "Cash"            else Decimal('0'),
+            'bank1':           ab if t == "Bank1"           else Decimal('0'),
+            'bank2':           ab if t == "Bank2"           else Decimal('0'),
+            'adj':             ab if t == "Adjustment"      else Decimal('0'),
+            'opening_balance': ab if t == "opening balance" else Decimal('0'),
+            'type_of_loan':    entry.type_of_loan,
+            'loan':            type('RptL', (), {
+                                   'id':           entry.code,
+                                   'type_of_loan': entry.type_of_loan,
+                               })(),
+            'code':            entry.code,
+            'created_at':      entry.datetime,
+            'is_negative':     raw < 0,
+        })()
+
+        if cb.is_negative:
+            payments.append(cb)
+        elif t in SWAP_TYPES:
+            payments.append(cb)
+        else:
+            transactions.append(cb)
+
+    new_t, new_p = [], []
+    for item in transactions:
+        lt = getattr(item.loan, 'type_of_loan', None) if hasattr(item, 'loan') else None
+        (new_p if lt in SWAP_TYPES else new_t).append(item)
+    for item in payments:
+        lt = (getattr(item.loan, 'type_of_loan', None)
+              if hasattr(item, 'loan')
+              else getattr(item, 'type_of_loan', None))
+        (new_t if lt in SWAP_TYPES else new_p).append(item)
+
+    transactions, payments = new_t, new_p
+    transactions.extend(OtherCashTransaction.objects.filter(transaction_type='RECEIPT'))
+    payments.extend(OtherCashTransaction.objects.filter(transaction_type='PAYMENT'))
+
+    return payments, transactions   # (payments, receipts)
+
+
+# ── Main report list view ─────────────────────────────────────────────────────
+def reports_list_view(request):
+    report_type = rpt_normalize(request.GET.get('type', ''))
+    view_mode   = request.GET.get('view', 'all')
+
+    type_map = {rpt_normalize(t): t for t in REPORT_ALL_TYPES}
+
+    if report_type not in type_map:
+        return render(request, 'reports_list.html', {
+            'error': f"Unknown report type: {report_type}"
+        })
+
+    selected_type = type_map[report_type]
+    is_deposit    = selected_type in REPORT_DEPOSIT_TYPES
+    rows = []
+
+    payments, receipts = rpt_cash_book_swap()
+
+    # ── PAYMENTS VIEW ─────────────────────────────────────────────────────────
+    if view_mode == 'payments':
+        filtered = [p for p in payments if rpt_get_loan_type(p) == report_type]
+        for p in filtered:
+            ln = p.loan if hasattr(p, 'loan') and p.loan else None
+            rows.append({
+                'loan_id':         ln.id     if ln else getattr(p, 'id',     '-'),
+                'gen_no':          ln.gen_no if ln else getattr(p, 'gen_no', '-'),
+                'name':            ln.name   if ln else getattr(p, 'name',   '-'),
+                'ref':             ln.code   if ln else getattr(p, 'code',   '-'),
+                'cash':            rpt_safe_decimal(getattr(p, 'cash',            0)),
+                'opening_balance': rpt_safe_decimal(getattr(p, 'opening_balance', 0)),
+                'bank1':           rpt_safe_decimal(getattr(p, 'bank1',           0)),
+                'bank2':           rpt_safe_decimal(getattr(p, 'bank2',           0)),
+                'adjustment':      rpt_safe_decimal(getattr(p, 'adj',             0)),
+                'created_at':      rpt_fmt(getattr(p, 'created_at', None)),
+            })
+
+    # ── RECEIPTS VIEW ─────────────────────────────────────────────────────────
+    elif view_mode == 'receipts':
+        filtered = [r for r in receipts if rpt_get_loan_type(r) == report_type]
+        for r in filtered:
+            ln = r.loan if hasattr(r, 'loan') and r.loan else None
+            rows.append({
+                'loan_id':         ln.id     if ln else getattr(r, 'id',     '-'),
+                'gen_no':          ln.gen_no if ln else getattr(r, 'gen_no', '-'),
+                'name':            ln.name   if ln else getattr(r, 'name',   '-'),
+                'ref':             ln.code   if ln else getattr(r, 'code',   '-'),
+                'cash':            rpt_safe_decimal(getattr(r, 'cash',            0)),
+                'opening_balance': rpt_safe_decimal(getattr(r, 'opening_balance', 0)),
+                'bank1':           rpt_safe_decimal(getattr(r, 'bank1',           0)),
+                'bank2':           rpt_safe_decimal(getattr(r, 'bank2',           0)),
+                'adjustment':      rpt_safe_decimal(getattr(r, 'adj',             0)),
+                'created_at':      rpt_fmt(getattr(r, 'created_at', None)),
+            })
+
+    # ── DEFAULT VIEW — one row per Loan ───────────────────────────────────────
+    else:
+        for loan in Loan.objects.filter(type_of_loan=selected_type).order_by('gen_no', 'id'):
+            if selected_type in REPORT_OTHER_TYPES:
+                rows.append({
+                    'loan_id':    loan.id,
+                    'gen_no':     loan.gen_no,
+                    'name':       loan.name,
+                    'ref':        loan.code,
+                    'balance':    rpt_safe_decimal(getattr(loan, 'amount',   0)),
+                    'interest':   None,
+                    'created_at': rpt_fmt(getattr(loan, 'created_at', None)),
+                })
+            else:
+                rows.append({
+                    'loan_id':    loan.id,
+                    'gen_no':     loan.gen_no,
+                    'name':       loan.name,
+                    'ref':        loan.code,
+                    'balance':    rpt_safe_decimal(getattr(loan, 'balance',  0)),
+                    'interest':   rpt_safe_decimal(getattr(loan, 'interest', 0)),
+                    'created_at': rpt_fmt(getattr(loan, 'created_at', None)),
+                })
+
+    return render(request, 'reports_list.html', {
+        'report_type':        selected_type,
+        'rows':               rows,
+        'is_loan_or_deposit': selected_type not in REPORT_OTHER_TYPES,
+        'is_deposit':         is_deposit,
+        'view_mode':          view_mode,
+    })
+
+
+# ── Per-loan transaction detail ───────────────────────────────────────────────
+def loan_transactions_view(request, loan_id):
+    loan       = get_object_or_404(Loan, id=loan_id)
+    is_deposit = loan.type_of_loan in REPORT_DEPOSIT_TYPES
+
+    receipts = []
+    payments = []
+
+    if is_deposit:
+        # Expand source JSON → individual receipt rows
+        try:
+            source_entries = json.loads(loan.source or '[]')
+        except Exception:
+            source_entries = []
+
+        for entry in source_entries:
+            breakdown = entry.get('breakdown', {})
+            receipts.append({
+                'code':              loan.code or str(loan.id),
+                'type_of_loan':      loan.type_of_loan,
+                'total_payment':     entry.get('amount', '0'),
+                'paid_to_interest':  '0',
+                'paid_to_principal': entry.get('amount', '0'),
+                'opening_balance':   breakdown.get('opening_balance', '0'),
+                'cash':              breakdown.get('cash',  '0'),
+                'bank1':             breakdown.get('bank1', '0'),
+                'bank2':             breakdown.get('bank2', '0'),
+                'adjustment':        breakdown.get('adj',   '0'),
+                'created_at':        entry.get('date', ''),
+            })
+
+        # Repayments (withdrawals) → Payments panel
+        for rep in LoanRepayment.objects.filter(loan=loan).order_by('created_at'):
+            total = (
+                rpt_safe_decimal(rep.cash)  +
+                rpt_safe_decimal(rep.bank1) +
+                rpt_safe_decimal(rep.bank2) +
+                rpt_safe_decimal(getattr(rep, 'adj',             0)) +
+                rpt_safe_decimal(getattr(rep, 'opening_balance', 0))
+            )
+            payments.append({
+                'code':            getattr(rep, 'code', ''),
+                'principal':       str(rpt_safe_decimal(rep.paid_to_principal)),
+                'interest':        '0',
+                'total':           str(total),
+                'opening_balance': str(rpt_safe_decimal(getattr(rep, 'opening_balance', 0))),
+                'cash':            str(rpt_safe_decimal(rep.cash)),
+                'bank1':           str(rpt_safe_decimal(rep.bank1)),
+                'bank2':           str(rpt_safe_decimal(rep.bank2)),
+                'adjustment':      str(rpt_safe_decimal(getattr(rep, 'adj', 0))),
+                'created_at':      rpt_fmt(rep.created_at),
+            })
+
+    else:
+        # Standard loan: repayments → Receipts panel
+        for rep in LoanRepayment.objects.filter(loan=loan).order_by('created_at'):
+            total = (
+                rpt_safe_decimal(rep.cash)  +
+                rpt_safe_decimal(rep.bank1) +
+                rpt_safe_decimal(rep.bank2) +
+                rpt_safe_decimal(getattr(rep, 'adj',             0)) +
+                rpt_safe_decimal(getattr(rep, 'opening_balance', 0))
+            )
+            receipts.append({
+                'code':              getattr(rep, 'code', ''),
+                'type_of_loan':      loan.type_of_loan,
+                'total_payment':     str(total),
+                'paid_to_interest':  str(rpt_safe_decimal(rep.paid_to_interest)),
+                'paid_to_principal': str(rpt_safe_decimal(rep.paid_to_principal)),
+                'opening_balance':   str(rpt_safe_decimal(getattr(rep, 'opening_balance', 0))),
+                'cash':              str(rpt_safe_decimal(rep.cash)),
+                'bank1':             str(rpt_safe_decimal(rep.bank1)),
+                'bank2':             str(rpt_safe_decimal(rep.bank2)),
+                'adjustment':        str(rpt_safe_decimal(getattr(rep, 'adj', 0))),
+                'created_at':        rpt_fmt(rep.created_at),
+            })
+
+        # Original loan disbursement → Payments panel
+        loan_total = (
+            rpt_safe_decimal(loan.cash)  +
+            rpt_safe_decimal(loan.bank1) +
+            rpt_safe_decimal(loan.bank2) +
+            rpt_safe_decimal(getattr(loan, 'adj',             0)) +
+            rpt_safe_decimal(getattr(loan, 'opening_balance', 0))
+        )
+        payments.append({
+            'code':            loan.code or str(loan.id),
+            'principal':       str(rpt_safe_decimal(getattr(loan, 'amount',   0))),
+            'interest':        str(rpt_safe_decimal(getattr(loan, 'interest',  0))),
+            'total':           str(loan_total),
+            'opening_balance': str(rpt_safe_decimal(getattr(loan, 'opening_balance', 0))),
+            'cash':            str(rpt_safe_decimal(loan.cash)),
+            'bank1':           str(rpt_safe_decimal(loan.bank1)),
+            'bank2':           str(rpt_safe_decimal(loan.bank2)),
+            'adjustment':      str(rpt_safe_decimal(getattr(loan, 'adj', 0))),
+            'created_at':      rpt_fmt(loan.created_at),
+        })
+
+    return JsonResponse({
+        'receipts':   receipts,
+        'payments':   payments,
+        'is_deposit': is_deposit,
+    })
